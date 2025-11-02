@@ -28,3 +28,8 @@ function calculateBuckets(apiResponse) {
 
     return { contactless: contactlessBucket, online: onlineBucket};
 }
+
+// Make function available globally for UI script
+if (typeof window !== 'undefined') {
+    window.calculateBuckets = calculateBuckets;
+}

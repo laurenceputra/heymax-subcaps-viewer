@@ -201,7 +201,7 @@
       try {
         // Check if calculateBuckets is available in the window object
         if (typeof window.calculateBuckets !== 'function') {
-          resultsDiv.innerHTML = '<p style="color: #f44336;">Error: calculateBuckets function not available</p>';
+          resultsDiv.innerHTML = '<p style="color: #f44336;">Error: calculateBuckets function not loaded. Please refresh the page and try again.</p>';
           return;
         }
         
@@ -306,7 +306,16 @@
     // Re-check on URL changes (for SPA navigation) with debouncing
     let lastUrl = window.location.href;
     let debounceTimer = null;
-    const observer = new MutationObserver(function() {
+    const observer = new MutationObserver(function(mutations) {
+      // Only process if there are significant changes
+      const hasSignificantChange = mutations.some(mutation => 
+        mutation.type === 'childList' && mutation.addedNodes.length > 0
+      );
+      
+      if (!hasSignificantChange) {
+        return;
+      }
+      
       // Debounce to avoid excessive checks
       if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -327,7 +336,8 @@
       }, 250); // 250ms debounce delay
     });
     
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Only observe childList changes, not all subtree changes
+    observer.observe(document.body, { childList: true, subtree: false });
   }
 
   // Wait for DOM to be ready
