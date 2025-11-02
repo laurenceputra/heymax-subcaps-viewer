@@ -9,6 +9,39 @@
   // Flag to track if we're currently patching
   let isPatching = false;
 
+  // Check if URL should be logged (only log URLs matching the target pattern)
+  function shouldLogUrl(url) {
+    try {
+      const urlObj = new URL(url, window.location.href);
+      
+      // Only log requests to heymax.ai domain
+      if (urlObj.hostname !== 'heymax.ai') {
+        return false;
+      }
+      
+      const pathname = urlObj.pathname;
+      
+      // Log requests to /cards/your-cards/* paths
+      if (pathname.startsWith('/cards/your-cards/')) {
+        return true;
+      }
+      
+      // Log requests to specific API endpoints
+      if (pathname.startsWith('/api/spend_tracking/cards/') && 
+          (pathname.includes('/summary') || pathname.includes('/transactions'))) {
+        return true;
+      }
+      
+      if (pathname === '/api/spend_tracking/card_tracker') {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
   // Logger function
   function logApiResponse(method, url, response, responseData) {
     console.log('%c[Network Monitor] API Response Logged', 'color: #4CAF50; font-weight: bold;');
@@ -48,6 +81,11 @@
 
     return originalFetch.apply(this, args)
       .then(async response => {
+        // Only log if URL matches the target pattern
+        if (!shouldLogUrl(url)) {
+          return response;
+        }
+
         // Clone the response so we can read it
         const clonedResponse = response.clone();
         
@@ -101,6 +139,11 @@
 
     xhr.addEventListener('load', function() {
       if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+        // Only log if URL matches the target pattern
+        if (!shouldLogUrl(xhr._url)) {
+          return;
+        }
+
         try {
           const contentType = xhr.getResponseHeader('content-type');
           let responseData;

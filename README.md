@@ -8,6 +8,7 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 ✅ **URL and Response Logging**: Logs request URLs and response data to browser console  
 ✅ **Patch Protection**: Monitors to ensure monkey patches aren't overwritten by other scripts  
 ✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten (checks every second)  
+✅ **Focused Scope**: Only runs on https://heymax.ai/cards/your-cards/ pages and subpages  
 ✅ **Manifest V3**: Uses the latest Chrome extension standards
 
 ## Quick Start
@@ -15,7 +16,8 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
 3. Click **"Load unpacked"** and select the `src` directory
-4. Open browser console (F12) to see logged URLs and response data
+4. Navigate to https://heymax.ai/cards/your-cards/ or any subpage
+5. Open browser console (F12) to see logged URLs and response data
 
 ## Documentation
 
@@ -37,6 +39,30 @@ The extension injects a monitoring script that:
 For each network request, the extension logs:
 - **URL**: The request URL
 - **Response Data**: The response body (JSON parsed if content-type is application/json, otherwise as text)
+
+## Data Storage
+
+The extension stores API data in Chrome's local storage organized by card ID:
+
+```javascript
+cardData: {
+  "7a30eab609ef58b841232633342ce19a": {
+    "transactions": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
+    "summary": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
+    "card_tracker": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 }
+  },
+  "9f45bc12de78a3c6b4e8d5f0a1c7e2b9": {
+    "transactions": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
+    "summary": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
+    "card_tracker": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 }
+  }
+}
+```
+
+Each card ID maintains the latest values for:
+- **transactions**: Latest transaction data for that card
+- **summary**: Latest summary data for that card
+- **card_tracker**: Card tracker data for that specific card (when viewed on detail pages like `/details` or `/reward-cycles`)
 
 ## Testing
 
