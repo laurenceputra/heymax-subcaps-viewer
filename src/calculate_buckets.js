@@ -19,7 +19,6 @@ function calculateBuckets(apiResponse) {
         } else if (transaction.payment_tag === 'online') {
             // Check if mcc_code is in ppv_online_mcc
             const mccCode = parseInt(transaction.mcc_code, 10); // Ensure mcc_code is an integer
-            data.push(mccCode);
             if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
                 // Round down and add to online bucket
                 onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);

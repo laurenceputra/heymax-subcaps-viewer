@@ -1,0 +1,334 @@
+// UI components for SubCaps button and overlay
+(function() {
+  'use strict';
+
+  console.log('[HeyMax SubCaps Viewer] UI script loaded');
+
+  // Extract card ID from URL
+  function extractCardIdFromUrl() {
+    const match = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+    return match ? match[1] : null;
+  }
+
+  // Check if button should be visible
+  function shouldShowButton(cardId) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['cardData'], function(result) {
+        const cardData = result.cardData;
+        
+        if (!cardData || !cardId) {
+          resolve(false);
+          return;
+        }
+        
+        const cardInfo = cardData[cardId];
+        if (!cardInfo || !cardInfo.card_tracker) {
+          resolve(false);
+          return;
+        }
+        
+        const cardTrackerData = cardInfo.card_tracker.data;
+        if (!cardTrackerData || !cardTrackerData.card) {
+          resolve(false);
+          return;
+        }
+        
+        const shortName = cardTrackerData.card.short_name;
+        resolve(shortName === 'UOB PPV');
+      });
+    });
+  }
+
+  // Create the SubCaps button
+  function createButton() {
+    const button = document.createElement('button');
+    button.id = 'heymax-subcaps-button';
+    button.textContent = 'subcaps';
+    button.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 10000;
+      transition: all 0.3s ease;
+      display: none;
+    `;
+    
+    button.addEventListener('mouseenter', function() {
+      button.style.backgroundColor = '#45a049';
+      button.style.transform = 'scale(1.05)';
+    });
+    
+    button.addEventListener('mouseleave', function() {
+      button.style.backgroundColor = '#4CAF50';
+      button.style.transform = 'scale(1)';
+    });
+    
+    button.addEventListener('click', function() {
+      showOverlay();
+    });
+    
+    return button;
+  }
+
+  // Create the overlay
+  function createOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'heymax-subcaps-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 10001;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background-color: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '×';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #666;
+      line-height: 1;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      transition: color 0.3s ease;
+    `;
+    
+    closeButton.addEventListener('mouseenter', function() {
+      closeButton.style.color = '#000';
+    });
+    
+    closeButton.addEventListener('mouseleave', function() {
+      closeButton.style.color = '#666';
+    });
+    
+    closeButton.addEventListener('click', function() {
+      hideOverlay();
+    });
+    
+    const title = document.createElement('h2');
+    title.textContent = 'UOB PPV SubCaps Analysis';
+    title.style.cssText = `
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #333;
+      font-size: 24px;
+    `;
+    
+    const resultsDiv = document.createElement('div');
+    resultsDiv.id = 'heymax-subcaps-results';
+    
+    content.appendChild(closeButton);
+    content.appendChild(title);
+    content.appendChild(resultsDiv);
+    overlay.appendChild(content);
+    
+    // Close overlay when clicking outside content
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        hideOverlay();
+      }
+    });
+    
+    return overlay;
+  }
+
+  // Show overlay with calculated data
+  function showOverlay() {
+    const overlay = document.getElementById('heymax-subcaps-overlay');
+    const resultsDiv = document.getElementById('heymax-subcaps-results');
+    
+    if (!overlay || !resultsDiv) {
+      console.error('[HeyMax SubCaps Viewer] Overlay elements not found');
+      return;
+    }
+    
+    // Show loading state
+    resultsDiv.innerHTML = '<p style="text-align: center; color: #666;">Loading data...</p>';
+    overlay.style.display = 'flex';
+    
+    // Get data and calculate
+    const cardId = extractCardIdFromUrl();
+    chrome.storage.local.get(['cardData'], function(result) {
+      const cardData = result.cardData;
+      
+      if (!cardData || !cardId || !cardData[cardId]) {
+        resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No card data found</p>';
+        return;
+      }
+      
+      const transactionsData = cardData[cardId].transactions;
+      if (!transactionsData || !transactionsData.data) {
+        resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No transaction data available</p>';
+        return;
+      }
+      
+      // Load and execute calculateBuckets function
+      fetch(chrome.runtime.getURL('calculate_buckets.js'))
+        .then(response => response.text())
+        .then(code => {
+          // Execute the code to get the calculateBuckets function
+          const scriptFunc = new Function(code + '; return calculateBuckets;');
+          const calculateBuckets = scriptFunc();
+          
+          // Calculate buckets
+          const transactions = transactionsData.data;
+          const results = calculateBuckets(transactions);
+          
+          // Display results
+          displayResults(results, transactions.length);
+        })
+        .catch(error => {
+          console.error('[HeyMax SubCaps Viewer] Error loading calculateBuckets:', error);
+          resultsDiv.innerHTML = '<p style="color: #f44336;">Error calculating data: ' + error.message + '</p>';
+        });
+    });
+  }
+
+  // Hide overlay
+  function hideOverlay() {
+    const overlay = document.getElementById('heymax-subcaps-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  }
+
+  // Display calculation results
+  function displayResults(results, transactionCount) {
+    const resultsDiv = document.getElementById('heymax-subcaps-results');
+    if (!resultsDiv) return;
+    
+    const html = `
+      <div style="margin-bottom: 20px;">
+        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+          Analyzed ${transactionCount} transaction${transactionCount !== 1 ? 's' : ''}
+        </p>
+      </div>
+      
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+        <h3 style="margin-top: 0; color: #2196F3; font-size: 18px;">Contactless Bucket</h3>
+        <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
+          $${results.contactless.toFixed(2)}
+        </p>
+        <p style="color: #666; font-size: 14px; margin-bottom: 0;">
+          Total from contactless payments (rounded down to nearest $5)
+        </p>
+      </div>
+      
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+        <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Online Bucket</h3>
+        <p style="font-size: 32px; font-weight: bold; margin: 10px 0; color: #333;">
+          $${results.online.toFixed(2)}
+        </p>
+        <p style="color: #666; font-size: 14px; margin-bottom: 0;">
+          Total from eligible online transactions (rounded down to nearest $5)
+        </p>
+      </div>
+      
+      <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #1976D2;">
+          <strong>Note:</strong> These calculations are based on the transaction data available in the extension storage.
+        </p>
+      </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
+  }
+
+  // Initialize UI
+  function initializeUI() {
+    // Create and append button
+    const button = createButton();
+    document.body.appendChild(button);
+    
+    // Create and append overlay
+    const overlay = createOverlay();
+    document.body.appendChild(overlay);
+    
+    // Check if button should be visible
+    const cardId = extractCardIdFromUrl();
+    if (cardId) {
+      shouldShowButton(cardId).then(shouldShow => {
+        if (shouldShow) {
+          button.style.display = 'block';
+          console.log('[HeyMax SubCaps Viewer] SubCaps button displayed for UOB PPV card');
+        } else {
+          console.log('[HeyMax SubCaps Viewer] SubCaps button hidden (conditions not met)');
+        }
+      });
+    }
+    
+    // Listen for storage changes to update button visibility
+    chrome.storage.onChanged.addListener(function(changes, namespace) {
+      if (namespace === 'local' && changes.cardData) {
+        const cardId = extractCardIdFromUrl();
+        if (cardId) {
+          shouldShowButton(cardId).then(shouldShow => {
+            button.style.display = shouldShow ? 'block' : 'none';
+          });
+        }
+      }
+    });
+    
+    // Re-check on URL changes (for SPA navigation)
+    let lastUrl = window.location.href;
+    const observer = new MutationObserver(function() {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        const cardId = extractCardIdFromUrl();
+        if (cardId) {
+          shouldShowButton(cardId).then(shouldShow => {
+            button.style.display = shouldShow ? 'block' : 'none';
+          });
+        } else {
+          button.style.display = 'none';
+        }
+      }
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // Wait for DOM to be ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeUI);
+  } else {
+    initializeUI();
+  }
+
+  console.log('[HeyMax SubCaps Viewer] UI script initialized');
+})();
