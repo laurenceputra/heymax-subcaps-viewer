@@ -18,13 +18,15 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 
 ## Usage
 
-Once installed, the extension will automatically:
+Once installed, the extension will automatically activate when you visit https://heymax.ai/cards/your-cards/ or any subpage:
 
-1. Inject monitoring scripts into all web pages
+1. Inject monitoring scripts into the page
 2. Intercept all network requests (fetch and XMLHttpRequest)
 3. Log the URL and response data to the browser console
 4. Monitor for patches being overwritten
 5. Automatically re-apply patches if tampering is detected
+
+**Note:** The extension only runs on https://heymax.ai/cards/your-cards/ pages and their subpages.
 
 ### Viewing Logged Data
 
@@ -69,7 +71,7 @@ Open the browser console (F12 or Ctrl+Shift+I) to see:
 
 ## Security & Privacy
 
-- The extension requires `<all_urls>` permission to monitor network requests on all sites
+- The extension only runs on https://heymax.ai/cards/your-cards/ pages and their subpages
 - URLs and response data are logged to the browser console only
 - No data is stored or transmitted to external servers
 - All data remains local to your browser session
@@ -77,9 +79,9 @@ Open the browser console (F12 or Ctrl+Shift+I) to see:
 ## Development
 
 The extension uses Manifest V3 with:
-- `content_scripts` for early injection
+- `content_scripts` for early injection on HeyMax SubCaps pages
 - `web_accessible_resources` to allow injected script access
-- `host_permissions` for all URLs to enable comprehensive monitoring
+- `host_permissions` limited to https://heymax.ai/cards/your-cards/* for focused monitoring
 
 ## Troubleshooting
 
@@ -89,9 +91,10 @@ The extension uses Manifest V3 with:
 - Reload the extension after making changes
 
 **Verifying the extension is active:**
-- Open browser console (F12) and navigate to any website
+- Open browser console (F12) and navigate to https://heymax.ai/cards/your-cards/
 - You should see "URL:" and "Response Data:" logs for each network request
 - Check that the extension appears in chrome://extensions/ and is enabled
+- The extension will only activate on https://heymax.ai/cards/your-cards/ pages and their subpages
 
 **Patches being overwritten:**
 - The extension automatically detects and re-applies patches every second

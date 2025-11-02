@@ -8,6 +8,7 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 ✅ **URL and Response Logging**: Logs request URLs and response data to browser console  
 ✅ **Patch Protection**: Monitors to ensure monkey patches aren't overwritten by other scripts  
 ✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten (checks every second)  
+✅ **Focused Scope**: Only runs on https://heymax.ai/cards/your-cards/ pages and subpages  
 ✅ **Manifest V3**: Uses the latest Chrome extension standards
 
 ## Quick Start
@@ -15,7 +16,8 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
 3. Click **"Load unpacked"** and select the `src` directory
-4. Open browser console (F12) to see logged URLs and response data
+4. Navigate to https://heymax.ai/cards/your-cards/ or any subpage
+5. Open browser console (F12) to see logged URLs and response data
 
 ## Documentation
 
