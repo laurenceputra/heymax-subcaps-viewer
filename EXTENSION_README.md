@@ -1,13 +1,13 @@
 # HeyMax SubCaps Viewer Chrome Extension
 
-A Chrome extension using Manifest V3 that monitors network requests by monkey patching fetch() and XMLHttpRequest, logs API responses, and ensures the patches are not overwritten.
+A Chrome extension using Manifest V3 that monitors network requests by monkey patching fetch() and XMLHttpRequest, and ensures the patches are not overwritten.
 
 ## Features
 
 - **Network Request Interception**: Monkey patches `fetch()` and `XMLHttpRequest` to intercept all network requests
-- **API Response Logging**: Automatically logs API responses to the console and stores them in chrome.storage
 - **Patch Monitoring**: Continuously monitors to ensure monkey patches aren't overwritten by other scripts
 - **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten
+- **Silent Operation**: Operates without console logging or data storage
 
 ## Installation
 
@@ -22,24 +22,10 @@ Once installed, the extension will automatically:
 
 1. Inject monitoring scripts into all web pages
 2. Intercept all network requests (fetch and XMLHttpRequest)
-3. Log API responses to the browser console
-4. Store recent API responses in chrome.storage.local (last 100 responses)
-5. Monitor and alert if patches are overwritten
+3. Monitor for patches being overwritten
+4. Automatically re-apply patches if tampering is detected
 
-### Viewing Logged Data
-
-**In the Browser Console:**
-- Open Developer Tools (F12 or Ctrl+Shift+I)
-- Look for messages prefixed with `[Network Monitor]`
-- API responses are logged with green colored headers
-
-**In Chrome Storage:**
-```javascript
-// View stored API responses in console
-chrome.storage.local.get(['apiResponses'], function(result) {
-  console.log(result.apiResponses);
-});
-```
+The extension operates silently without any console logging or data storage.
 
 ## File Structure
 
@@ -72,29 +58,22 @@ chrome.storage.local.get(['apiResponses'], function(result) {
 
 2. **Network Monitoring** (`injected.js`):
    - Stores references to original `fetch()` and `XMLHttpRequest` methods
-   - Replaces them with patched versions that log responses
+   - Replaces them with patched versions that maintain interception
    - Checks every second if patches have been overwritten
    - Re-applies patches automatically if needed
-
-3. **Response Logging**:
-   - JSON responses are parsed and logged
-   - Small text responses are also logged
-   - Each response includes method, URL, status, and data
-   - Responses are dispatched as custom events for the content script
 
 ## Security & Privacy
 
 - The extension requires `<all_urls>` permission to monitor network requests on all sites
-- API responses are stored locally in chrome.storage.local
+- No data is logged or stored
 - No data is transmitted to external servers
-- Storage is limited to the last 100 responses to prevent excessive memory usage
+- The extension operates completely silently
 
 ## Development
 
 The extension uses Manifest V3 with:
 - `content_scripts` for early injection
 - `web_accessible_resources` to allow injected script access
-- `storage` permission for local data persistence
 - `host_permissions` for all URLs to enable comprehensive monitoring
 
 ## Troubleshooting
@@ -104,12 +83,11 @@ The extension uses Manifest V3 with:
 - Verify the extension is enabled
 - Reload the extension after making changes
 
-**Not seeing logs:**
-- Open the browser console (F12)
-- Refresh the page to ensure scripts are injected
-- Check for any error messages in the console
+**Verifying the extension is active:**
+- The extension operates silently without console output
+- To verify it's working, you can temporarily add console.log statements to the code
+- Check that the extension appears in chrome://extensions/ and is enabled
 
 **Patches being overwritten:**
-- The extension will automatically detect this and re-apply patches
-- Look for red "ALERT" messages in the console
-- This is normal behavior if other scripts also modify network methods
+- The extension automatically detects and re-applies patches every second
+- This happens silently without any user notification

@@ -1,5 +1,9 @@
 # Testing Guide for HeyMax SubCaps Viewer Extension
 
+## Note: Silent Operation
+
+**Important:** The extension now operates silently without console logging or data storage. This testing guide is provided for development purposes. To verify the extension is working, you would need to temporarily add console.log statements to the code or use browser debugging tools to inspect the patched functions.
+
 ## Manual Testing Instructions
 
 ### 1. Load the Extension in Chrome
@@ -10,92 +14,35 @@
 4. Select the `src` directory from the repository
 5. Verify the extension appears in the list with a green icon
 
-### 2. Test the Extension
+### 2. Verify Extension is Loaded
 
-#### Option A: Use the Included Test Page
+Since the extension operates silently:
+1. Check that the extension appears in `chrome://extensions/` and is enabled
+2. The extension icon should show in the extensions list
+3. No console output will be visible
 
-1. Open `test.html` in Chrome (you can use `file://` or run a local server)
-2. Open Developer Tools (F12 or Ctrl+Shift+I)
-3. Check the Console tab for initialization messages:
-   - Look for `[Network Monitor] Initializing network request monitoring...`
-   - Look for `[Network Monitor] Monitoring active!`
+### 3. Testing with Temporary Logging (Development Only)
 
-#### Option B: Test on Any Website
+To verify the extension is working during development, you can temporarily add console.log statements:
 
-1. Navigate to any website (e.g., https://jsonplaceholder.typicode.com)
-2. Open Developer Tools Console
-3. Watch for `[Network Monitor]` messages as the page loads
+**In `src/injected.js`:**
+- Add `console.log('Patch applied')` in the `patchFetch()` and `patchXHR()` functions
+- Add `console.log('Monitoring...', window.fetch === monkeyPatchedFetch)` in the `monitorPatches()` function
 
-### 3. Verify Network Request Interception
+**Test the modifications:**
+1. Reload the extension in chrome://extensions/
+2. Open a test page
+3. Check the console for your temporary log messages
+4. Remove the console.log statements when done testing
 
-**Test Fetch API:**
-1. In the test page, click **"Fetch JSON Data"** button
-2. Check console for:
-   - `[Network Monitor] Intercepted fetch: GET https://...`
-   - `[Network Monitor] API Response Logged` (in green)
-   - Full response data logged
+### 4. Advanced Testing with Browser DevTools
 
-**Test XMLHttpRequest:**
-1. Click **"XHR JSON Request"** button
-2. Check console for:
-   - `[Network Monitor] Intercepted XHR: GET https://...`
-   - Response details logged
+You can verify patches are applied by:
+1. Opening DevTools Console
+2. Checking if `window.fetch` has been replaced: `console.log(window.fetch.toString())`
+3. Checking XMLHttpRequest: `console.log(XMLHttpRequest.prototype.open.toString())`
 
-### 4. Test Patch Protection
-
-1. Click **"Try to Overwrite Patches"** button
-2. This simulates a malicious script overwriting the patches
-3. Within 1 second, you should see in console:
-   - `[Network Monitor] ALERT: fetch() was overwritten! Re-applying patch...` (in red)
-   - `[Network Monitor] ALERT: XMLHttpRequest.open() was overwritten! Re-applying patch...` (in red)
-4. Verify patches are restored automatically
-
-### 5. Verify Data Storage
-
-Open the console and run:
-```javascript
-chrome.storage.local.get(['apiResponses'], function(result) {
-  console.log('Stored responses:', result.apiResponses);
-});
-```
-
-You should see an array of recent API responses (up to 100).
-
-## Expected Console Output
-
-### On Page Load:
-```
-[HeyMax SubCaps Viewer] Content script loaded
-[Network Monitor] Initializing network request monitoring...
-[Network Monitor] fetch() has been patched
-[Network Monitor] XMLHttpRequest has been patched
-[Network Monitor] Monitoring active!
-[HeyMax SubCaps Viewer] Injected script loaded successfully
-[HeyMax SubCaps Viewer] Content script initialized
-```
-
-### On Network Request:
-```
-[Network Monitor] Intercepted fetch: GET https://api.example.com/data
-[Network Monitor] API Response Logged ✓ (in green)
-Method: GET
-URL: https://api.example.com/data
-Status: 200
-Response Data: {...}
----
-[HeyMax SubCaps Viewer] API Response received in content script:
-  Timestamp: 2025-11-02T06:49:53.585Z
-  Method: GET
-  URL: https://api.example.com/data
-  Status: 200
-[HeyMax SubCaps Viewer] Response stored in chrome.storage
-```
-
-### On Patch Override Detection:
-```
-[Network Monitor] ALERT: fetch() was overwritten! Re-applying patch... ⚠️ (in red)
-[Network Monitor] fetch() has been patched
-```
+The functions should show the patched versions (monkeyPatchedFetch, monkeyPatchedXHROpen).
 
 ## Troubleshooting
 
@@ -103,31 +50,28 @@ Response Data: {...}
 - Verify Developer Mode is enabled in chrome://extensions/
 - Check that the extension is enabled (toggle should be ON)
 - Reload the extension after making any changes
-- Refresh the test page
+- Since the extension operates silently, verification requires inspection of the patched functions
 
-### Not Seeing Console Messages
-- Ensure Developer Tools are open
-- Check you're looking at the correct Console tab
-- Try refreshing the page
-- Verify the extension is loaded and enabled
+### Verifying Patches Are Applied
+- Open DevTools Console
+- Run: `console.log(window.fetch.toString())`
+- You should see the patched function code
+- Run: `console.log(XMLHttpRequest.prototype.open.toString())`
+- You should see the patched XHR code
 
 ### Patches Not Being Applied
 - Check for JavaScript errors in the console
-- Verify `injected.js` is being loaded (check Network tab)
+- Verify `injected.js` is being loaded (check Network tab in DevTools)
 - Ensure the extension has proper permissions
+- Try reloading the extension
 
 ## Security Considerations
 
 - The extension monitors ALL network requests on ALL websites
-- API responses are stored locally in browser storage
+- No data is logged or stored
 - No data is transmitted externally
-- Storage is limited to last 100 responses to prevent memory issues
+- The extension operates completely silently
 
-## Test Page Screenshot
+## Test Page
 
-![Test Page Screenshot](https://github.com/user-attachments/assets/dbcb8536-1b02-4581-83e9-051465fd2202)
-
-The test page provides interactive buttons to test all extension features including:
-- Fetch API interception
-- XMLHttpRequest interception
-- Patch protection and auto-recovery
+A test page is provided at `test.html` for development purposes. Note that since the extension no longer logs to console, you'll need to add temporary logging statements to verify functionality during testing.
