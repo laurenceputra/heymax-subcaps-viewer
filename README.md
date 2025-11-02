@@ -46,7 +46,7 @@ The extension stores API data in Chrome's local storage organized by card ID:
 
 ```javascript
 cardData: {
-  "7a30eab609ef58b8914c4633342ce19a": {
+  "7a30eab609ef58b841232633342ce19a": {
     "transactions": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
     "summary": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
     "card_tracker": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 }
@@ -55,8 +55,7 @@ cardData: {
     "transactions": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
     "summary": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
     "card_tracker": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 }
-  },
-  "card_tracker": { data: {...}, timestamp: "2025-11-02T12:02:00.000Z", url: "...", status: 200 }
+  }
 }
 ```
 
