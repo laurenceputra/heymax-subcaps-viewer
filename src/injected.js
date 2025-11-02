@@ -17,7 +17,33 @@
   }
 
   function monkeyPatchedFetch(...args) {
-    return originalFetch.apply(this, args);
+    const [resource, config] = args;
+    const url = typeof resource === 'string' ? resource : resource.url;
+
+    console.log('URL:', url);
+
+    return originalFetch.apply(this, args)
+      .then(async response => {
+        // Clone the response so we can read it
+        const clonedResponse = response.clone();
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          let responseData;
+          
+          if (contentType && contentType.includes('application/json')) {
+            responseData = await clonedResponse.json();
+          } else {
+            responseData = await clonedResponse.text();
+          }
+          
+          console.log('Response Data:', responseData);
+        } catch (error) {
+          // Silently handle errors reading response
+        }
+
+        return response;
+      });
   }
 
   // Monkey patch XMLHttpRequest
@@ -31,10 +57,33 @@
   function monkeyPatchedXHROpen(method, url, ...rest) {
     this._method = method;
     this._url = url;
+    console.log('URL:', url);
     return originalXHROpen.call(this, method, url, ...rest);
   }
 
   function monkeyPatchedXHRSend(body) {
+    const xhr = this;
+    
+    // Add event listener for load
+    xhr.addEventListener('load', function() {
+      if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 400) {
+        try {
+          const contentType = xhr.getResponseHeader('content-type');
+          let responseData;
+
+          if (contentType && contentType.includes('application/json')) {
+            responseData = JSON.parse(xhr.responseText);
+          } else {
+            responseData = xhr.responseText;
+          }
+
+          console.log('Response Data:', responseData);
+        } catch (error) {
+          // Silently handle errors processing response
+        }
+      }
+    });
+
     return originalXHRSend.call(this, body);
   }
 
