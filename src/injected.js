@@ -13,9 +13,30 @@
   function shouldLogUrl(url) {
     try {
       const urlObj = new URL(url, window.location.href);
-      // Only log requests to heymax.ai/cards/your-cards/* paths
-      return urlObj.hostname === 'heymax.ai' && 
-             urlObj.pathname.startsWith('/cards/your-cards/');
+      
+      // Only log requests to heymax.ai domain
+      if (urlObj.hostname !== 'heymax.ai') {
+        return false;
+      }
+      
+      const pathname = urlObj.pathname;
+      
+      // Log requests to /cards/your-cards/* paths
+      if (pathname.startsWith('/cards/your-cards/')) {
+        return true;
+      }
+      
+      // Log requests to specific API endpoints
+      if (pathname.startsWith('/api/spend_tracking/cards/') && 
+          (pathname.includes('/summary') || pathname.includes('/transactions'))) {
+        return true;
+      }
+      
+      if (pathname === '/api/spend_tracking/card_tracker') {
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       return false;
     }
