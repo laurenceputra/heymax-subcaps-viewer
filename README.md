@@ -5,17 +5,17 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 ## Features
 
 ✅ **Network Request Monitoring**: Monkey patches `fetch()` and `XMLHttpRequest` to intercept all network requests  
+✅ **URL and Response Logging**: Logs request URLs and response data to browser console  
 ✅ **Patch Protection**: Monitors to ensure monkey patches aren't overwritten by other scripts  
 ✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten (checks every second)  
-✅ **Manifest V3**: Uses the latest Chrome extension standards  
-✅ **Silent Operation**: Operates without console logging or data storage
+✅ **Manifest V3**: Uses the latest Chrome extension standards
 
 ## Quick Start
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
 3. Click **"Load unpacked"** and select the `src` directory
-4. The extension will operate silently in the background
+4. Open browser console (F12) to see logged URLs and response data
 
 ## Documentation
 
@@ -28,10 +28,15 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 The extension injects a monitoring script that:
 1. Stores references to original `fetch()` and `XMLHttpRequest` methods
 2. Replaces them with patched versions to intercept network requests
-3. Monitors every second to detect if patches are overwritten
-4. Automatically restores patches if tampering is detected
+3. Logs the URL and response data for each request to the browser console
+4. Monitors every second to detect if patches are overwritten
+5. Automatically restores patches if tampering is detected
 
-All operations occur silently without any console logging or data storage.
+## What Gets Logged
+
+For each network request, the extension logs:
+- **URL**: The request URL
+- **Response Data**: The response body (JSON parsed if content-type is application/json, otherwise as text)
 
 ## Testing
 
