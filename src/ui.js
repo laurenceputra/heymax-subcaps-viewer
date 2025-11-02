@@ -197,25 +197,24 @@
         return;
       }
       
-      // Load and execute calculateBuckets function
-      fetch(chrome.runtime.getURL('calculate_buckets.js'))
-        .then(response => response.text())
-        .then(code => {
-          // Execute the code to get the calculateBuckets function
-          const scriptFunc = new Function(code + '; return calculateBuckets;');
-          const calculateBuckets = scriptFunc();
-          
-          // Calculate buckets
-          const transactions = transactionsData.data;
-          const results = calculateBuckets(transactions);
-          
-          // Display results
-          displayResults(results, transactions.length);
-        })
-        .catch(error => {
-          console.error('[HeyMax SubCaps Viewer] Error loading calculateBuckets:', error);
-          resultsDiv.innerHTML = '<p style="color: #f44336;">Error calculating data: ' + error.message + '</p>';
-        });
+      // Calculate buckets using the calculateBuckets function injected into page context
+      try {
+        // Check if calculateBuckets is available in the window object
+        if (typeof window.calculateBuckets !== 'function') {
+          resultsDiv.innerHTML = '<p style="color: #f44336;">Error: calculateBuckets function not available</p>';
+          return;
+        }
+        
+        // Calculate buckets
+        const transactions = transactionsData.data;
+        const results = window.calculateBuckets(transactions);
+        
+        // Display results
+        displayResults(results, transactions.length);
+      } catch (error) {
+        console.error('[HeyMax SubCaps Viewer] Error calculating data:', error);
+        resultsDiv.innerHTML = '<p style="color: #f44336;">Error calculating data: ' + error.message + '</p>';
+      }
     });
   }
 
@@ -304,20 +303,28 @@
       }
     });
     
-    // Re-check on URL changes (for SPA navigation)
+    // Re-check on URL changes (for SPA navigation) with debouncing
     let lastUrl = window.location.href;
+    let debounceTimer = null;
     const observer = new MutationObserver(function() {
-      if (window.location.href !== lastUrl) {
-        lastUrl = window.location.href;
-        const cardId = extractCardIdFromUrl();
-        if (cardId) {
-          shouldShowButton(cardId).then(shouldShow => {
-            button.style.display = shouldShow ? 'block' : 'none';
-          });
-        } else {
-          button.style.display = 'none';
-        }
+      // Debounce to avoid excessive checks
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
+      
+      debounceTimer = setTimeout(function() {
+        if (window.location.href !== lastUrl) {
+          lastUrl = window.location.href;
+          const cardId = extractCardIdFromUrl();
+          if (cardId) {
+            shouldShowButton(cardId).then(shouldShow => {
+              button.style.display = shouldShow ? 'block' : 'none';
+            });
+          } else {
+            button.style.display = 'none';
+          }
+        }
+      }, 250); // 250ms debounce delay
     });
     
     observer.observe(document.body, { childList: true, subtree: true });
