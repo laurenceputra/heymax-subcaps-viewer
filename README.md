@@ -51,7 +51,7 @@ cardData: {
     "summary": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 },
     "card_tracker": { data: {...}, timestamp: "2025-11-02T12:00:00.000Z", url: "...", status: 200 }
   },
-  "abc123def456": {
+  "9f45bc12de78a3c6b4e8d5f0a1c7e2b9": {
     "transactions": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
     "summary": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 },
     "card_tracker": { data: {...}, timestamp: "2025-11-02T12:01:00.000Z", url: "...", status: 200 }
@@ -64,8 +64,6 @@ Each card ID maintains the latest values for:
 - **transactions**: Latest transaction data for that card
 - **summary**: Latest summary data for that card
 - **card_tracker**: Card tracker data for that specific card (when viewed on detail pages like `/details` or `/reward-cycles`)
-
-The `card_tracker` key at the root level stores global card tracker data when accessed from the main listing page (`https://heymax.ai/cards/your-cards/`)
 
 ## Testing
 
