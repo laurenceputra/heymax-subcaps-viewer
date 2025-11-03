@@ -99,6 +99,7 @@
 
             if (cardShortName === 'UOB VS') {
                 // UOB Visa Signature logic
+                // Note: A transaction can be counted in both buckets if it's both contactless AND in foreign currency
                 apiResponse.forEach((transactionObj) => {
                     const transaction = transactionObj.transaction;
 
@@ -156,12 +157,10 @@
             ];
             
             const result = calculateBuckets(transactions, 'UOB PPV');
-            const expected = { contactless: 80, online: 0 }; // 25 + 40 + 10 = 75, but wait let me recalculate: floor(27.5/5)*5 = 25, floor(43.2/5)*5 = 40, floor(12.8/5)*5 = 10 = 75
-            // Actually: 25 + 40 + 10 = 75
-            const expectedCorrect = { contactless: 75, online: 0 };
-            const passed = result.contactless === expectedCorrect.contactless && result.online === expectedCorrect.online;
+            const expected = { contactless: 75, online: 0 };
+            const passed = result.contactless === expected.contactless && result.online === expected.online;
             
-            displayResult('ppv-results', 'UOB PPV Contactless Bucket', passed, expectedCorrect, result);
+            displayResult('ppv-results', 'UOB PPV Contactless Bucket', passed, expected, result);
         }
 
         function testUobPpvOnline() {

@@ -13,6 +13,7 @@ function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
 
     if (cardShortName === 'UOB VS') {
         // UOB Visa Signature logic
+        // Note: A transaction can be counted in both buckets if it's both contactless AND in foreign currency
         apiResponse.forEach((transactionObj) => {
             const transaction = transactionObj.transaction;
 
