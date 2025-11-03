@@ -77,10 +77,10 @@
 
         if (transaction.original_currency && transaction.original_currency !== 'SGD') {
           // Round down and add to foreign currency bucket
-          foreignCurrencyBucket += roundDownToNearestFive(transaction.base_currency_amount);
+          foreignCurrencyBucket += transaction.base_currency_amount;
         } else if (transaction.payment_tag === 'contactless') {
           // Only count in contactless if NOT foreign currency
-          contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
+          contactlessBucket += transaction.base_currency_amount;
         }
       });
 
