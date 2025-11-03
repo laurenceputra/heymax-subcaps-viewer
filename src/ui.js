@@ -401,7 +401,7 @@
     html += `
       <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px;">
         <p style="margin: 0; font-size: 14px; color: #1976D2;">
-          <strong>Note:</strong> These calculations are based on the transaction data available in the extension storage.
+          <strong>Note:</strong> These calculations are based on the transaction data that has been loaded so far.
         </p>
       </div>
     `;
