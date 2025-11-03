@@ -31,16 +31,16 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 For Firefox, Safari, Opera, or if you prefer userscripts:
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser
-2. Open the script at `src/tampermonkey/heymax-subcaps-viewer.user.js`
+2. Open the script at `tampermonkey/heymax-subcaps-viewer.user.js`
 3. Copy the contents and create a new userscript in Tampermonkey
 4. Navigate to https://heymax.ai/cards/your-cards/ and the script will activate
 
-See [src/tampermonkey/README.md](src/tampermonkey/README.md) for detailed Tampermonkey instructions.
+See [tampermonkey/README.md](tampermonkey/README.md) for detailed Tampermonkey instructions.
 
 ## Documentation
 
 - **[EXTENSION_README.md](EXTENSION_README.md)** - Comprehensive extension documentation
-- **[src/tampermonkey/README.md](src/tampermonkey/README.md)** - Tampermonkey userscript documentation
+- **[tampermonkey/README.md](tampermonkey/README.md)** - Tampermonkey userscript documentation
 - **[src/test/TESTING.md](src/test/TESTING.md)** - Detailed testing instructions
 - **[src/test/test.html](src/test/test.html)** - Interactive test page to verify functionality
 
