@@ -1,0 +1,805 @@
+// ==UserScript==
+// @name         HeyMax SubCaps Viewer
+// @namespace    http://tampermonkey.net/
+// @version      1.0.2
+// @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
+// @author       Laurence Putra Franslay (@laurenceputra)
+// @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
+// @update       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/raw/refs/heads/main/tampermonkey/heymax-subcaps-viewer.user.js
+// @match        https://heymax.ai/cards/your-cards/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=heymax.ai
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_listValues
+// @run-at       document-start
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    console.log('[HeyMax SubCaps Viewer] Tampermonkey script starting...');
+
+    // ============================================================================
+    // PART 1: INJECT MONITORING SCRIPT INTO PAGE CONTEXT
+    // ============================================================================
+    // The monitoring script must run in the page context to intercept fetch/XHR
+    // It will dispatch custom events that we listen to in the userscript context
+    
+    function injectMonitoringScript() {
+        const script = document.createElement('script');
+        script.textContent = `
+(function() {
+    'use strict';
+
+    // Store original functions
+    const originalFetch = window.fetch;
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+
+    // Flag to track if we're currently patching
+    let isPatching = false;
+
+    // Check if URL should be logged
+    function shouldLogUrl(url) {
+        try {
+            const urlObj = new URL(url, window.location.href);
+            
+            if (urlObj.hostname !== 'heymax.ai') {
+                return false;
+            }
+            
+            const pathname = urlObj.pathname;
+            
+            if (pathname.startsWith('/cards/your-cards/')) {
+                return true;
+            }
+            
+            if (pathname.startsWith('/api/spend_tracking/cards/') && 
+                (pathname.includes('/summary') || pathname.includes('/transactions'))) {
+                return true;
+            }
+            
+            if (pathname === '/api/spend_tracking/card_tracker') {
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // Logger function - dispatches event for userscript to handle
+    function logApiResponse(method, url, response, responseData) {
+        console.log('%c[Network Monitor] API Response Logged', 'color: #4CAF50; font-weight: bold;');
+        console.log('Method:', method);
+        console.log('URL:', url);
+        console.log('Status:', response?.status);
+        console.log('Response Data:', responseData);
+        console.log('---');
+
+        // Dispatch custom event for userscript to listen to
+        window.dispatchEvent(new CustomEvent('apiResponseLogged', {
+            detail: {
+                method,
+                url,
+                status: response?.status,
+                data: responseData,
+                timestamp: new Date().toISOString()
+            }
+        }));
+    }
+
+    // Monkey patch fetch
+    function patchFetch() {
+        if (window.fetch === monkeyPatchedFetch) return;
+        
+        window.fetch = monkeyPatchedFetch;
+        console.log('%c[Network Monitor] fetch() has been patched', 'color: #2196F3; font-weight: bold;');
+    }
+
+    function monkeyPatchedFetch(...args) {
+        const [resource, config] = args;
+        const url = typeof resource === 'string' ? resource : resource.url;
+        const method = config?.method || 'GET';
+
+        console.log(\`%c[Network Monitor] Intercepted fetch: \${method} \${url}\`, 'color: #FF9800;');
+
+        return originalFetch.apply(this, args)
+            .then(async response => {
+                if (!shouldLogUrl(url)) {
+                    return response;
+                }
+
+                const clonedResponse = response.clone();
+                
+                try {
+                    const contentType = response.headers.get('content-type');
+                    let responseData;
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        responseData = await clonedResponse.json();
+                        logApiResponse(method, url, response, responseData);
+                    } else {
+                        const text = await clonedResponse.text();
+                        if (text.length < 1000) {
+                            logApiResponse(method, url, response, text);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[Network Monitor] Error reading response:', error);
+                }
+
+                return response;
+            })
+            .catch(error => {
+                console.error(\`[Network Monitor] Fetch error for \${url}:\`, error);
+                throw error;
+            });
+    }
+
+    // Monkey patch XMLHttpRequest
+    function patchXHR() {
+        if (XMLHttpRequest.prototype.open === monkeyPatchedXHROpen) return;
+        
+        XMLHttpRequest.prototype.open = monkeyPatchedXHROpen;
+        XMLHttpRequest.prototype.send = monkeyPatchedXHRSend;
+        console.log('%c[Network Monitor] XMLHttpRequest has been patched', 'color: #2196F3; font-weight: bold;');
+    }
+
+    function monkeyPatchedXHROpen(method, url, ...rest) {
+        this._method = method;
+        this._url = url;
+        console.log(\`%c[Network Monitor] Intercepted XHR: \${method} \${url}\`, 'color: #FF9800;');
+        return originalXHROpen.call(this, method, url, ...rest);
+    }
+
+    function monkeyPatchedXHRSend(body) {
+        const xhr = this;
+        
+        xhr.addEventListener('load', function() {
+            if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+                if (!shouldLogUrl(xhr._url)) {
+                    return;
+                }
+
+                try {
+                    const contentType = xhr.getResponseHeader('content-type');
+                    let responseData;
+
+                    if (contentType && contentType.includes('application/json')) {
+                        responseData = JSON.parse(xhr.responseText);
+                    } else if (xhr.responseText && xhr.responseText.length < 1000) {
+                        responseData = xhr.responseText;
+                    }
+
+                    if (responseData) {
+                        logApiResponse(xhr._method, xhr._url, { status: xhr.status }, responseData);
+                    }
+                } catch (error) {
+                    console.warn('[Network Monitor] Error processing XHR response:', error);
+                }
+            }
+        });
+
+        return originalXHRSend.call(this, body);
+    }
+
+    // Apply patches
+    function applyPatches() {
+        if (isPatching) return;
+        isPatching = true;
+        
+        patchFetch();
+        patchXHR();
+        
+        isPatching = false;
+    }
+
+    // Monitor for patches being overwritten
+    function monitorPatches() {
+        setInterval(() => {
+            if (window.fetch !== monkeyPatchedFetch) {
+                console.warn('%c[Network Monitor] ALERT: fetch() was overwritten! Re-applying patch...', 'color: #F44336; font-weight: bold; font-size: 14px;');
+                patchFetch();
+            }
+
+            if (XMLHttpRequest.prototype.open !== monkeyPatchedXHROpen) {
+                console.warn('%c[Network Monitor] ALERT: XMLHttpRequest.open() was overwritten! Re-applying patch...', 'color: #F44336; font-weight: bold; font-size: 14px;');
+                patchXHR();
+            }
+        }, 1000);
+    }
+
+    // Initialize
+    console.log('%c[Network Monitor] Initializing network request monitoring...', 'color: #9C27B0; font-weight: bold; font-size: 16px;');
+    applyPatches();
+    monitorPatches();
+    console.log('%c[Network Monitor] Monitoring active!', 'color: #4CAF50; font-weight: bold; font-size: 16px;');
+
+})();
+`;
+        
+        (document.head || document.documentElement).appendChild(script);
+        console.log('[HeyMax SubCaps Viewer] Monitoring script injected into page context');
+    }
+
+    // Inject the monitoring script immediately
+    injectMonitoringScript();
+
+    // ============================================================================
+    // PART 2: LISTEN FOR EVENTS AND STORE DATA USING GM FUNCTIONS
+    // ============================================================================
+    // This part runs in the userscript context where GM functions are available
+
+    // Extract card ID from URL
+    function extractCardId(url) {
+        const match = url.match(/\/api\/spend_tracking\/cards\/([a-f0-9]+)\//);
+        if (match) {
+            return match[1];
+        }
+        
+        if (url.includes('/cards//')) {
+            const pageMatch = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+            return pageMatch ? pageMatch[1] : null;
+        }
+        
+        return null;
+    }
+
+    // Determine the data type from URL
+    function getDataType(url) {
+        if (url.includes('/transactions')) {
+            return 'transactions';
+        } else if (url.includes('/summary')) {
+            return 'summary';
+        } else if (url.includes('/card_tracker')) {
+            return 'card_tracker';
+        }
+        return null;
+    }
+
+    // Listen for API response events from the injected script
+    window.addEventListener('apiResponseLogged', function(event) {
+        const { method, url, status, data, timestamp } = event.detail;
+        
+        console.log('[HeyMax SubCaps Viewer] API Response received in userscript:');
+        console.log('  Timestamp:', timestamp);
+        console.log('  Method:', method);
+        console.log('  URL:', url);
+        console.log('  Status:', status);
+        
+        const dataType = getDataType(url);
+        let cardId = extractCardId(url);
+        
+        // For card_tracker, try to get card ID from the current page URL
+        if (dataType === 'card_tracker' && !cardId) {
+            const pageMatch = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+            if (pageMatch) {
+                cardId = pageMatch[1];
+            }
+        }
+        
+        // Get existing card data
+        const cardDataStr = GM_getValue('cardData', '{}');
+        const cardData = JSON.parse(cardDataStr);
+        
+        console.log('[HeyMax SubCaps Viewer] Current cardData before update:', cardData);
+        
+        if (dataType && cardId) {
+            // Initialize card object if it doesn't exist
+            if (!cardData[cardId]) {
+                cardData[cardId] = {};
+            }
+            
+            // Store the latest data for this card ID and data type
+            cardData[cardId][dataType] = {
+                data: data,
+                timestamp: timestamp,
+                url: url,
+                status: status
+            };
+            
+            console.log(`[HeyMax SubCaps Viewer] Stored ${dataType} for card ${cardId}`);
+        } else if (dataType === 'card_tracker' && !cardId) {
+            // card_tracker on main listing page (no specific card ID)
+            cardData['card_tracker'] = {
+                data: data,
+                timestamp: timestamp,
+                url: url,
+                status: status
+            };
+            
+            console.log('[HeyMax SubCaps Viewer] Stored card_tracker data (global)');
+        }
+        
+        // Save the updated cardData structure
+        GM_setValue('cardData', JSON.stringify(cardData));
+        
+        console.log('[HeyMax SubCaps Viewer] Card data updated. New cardData:', cardData);
+        
+        // Verify it was saved
+        const verifyStr = GM_getValue('cardData', '{}');
+        console.log('[HeyMax SubCaps Viewer] Verified saved cardData:', JSON.parse(verifyStr));
+    });
+
+    // ============================================================================
+    // PART 3: UI COMPONENTS
+    // ============================================================================
+    // This runs in the userscript context and can access GM storage
+
+    // Extract card ID from URL
+    function extractCardIdFromUrl() {
+        const match = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+        return match ? match[1] : null;
+    }
+
+    // Calculate buckets from transaction data
+    function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
+        const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
+        const ppvDiningMcc = [5811, 5812, 5814, 5333, 5411, 5441, 5462, 5499, 8012, 9751];
+        const ppvEntertainmentMcc = [7278, 7832, 7841, 7922, 7991, 7996, 7998, 7999];
+        
+        const blacklistMcc = [4829, 4900, 5199, 5960, 5965, 5993, 6012, 6050, 6051, 6211, 6300, 6513, 6529, 6530, 6534, 6540, 7349, 7511, 7523, 7995, 8062, 8211, 8220, 8241, 8244, 8249, 8299, 8398, 8661, 8651, 8699, 8999, 9211, 9222, 9223, 9311, 9402, 9405, 9399];
+        
+        const blacklistMerchantPrefixes = [
+            "AXS", "AMAZE", "AMAZE* TRANSIT", "BANC DE BINARY", "BANCDEBINARY.COM",
+            "EZ LINK PTE LTD (FEVO)", "EZ Link transport", "EZ Link", "EZ-LINK (IMAGINE CARD)",
+            "EZ-Link EZ-Reload (ATU)", "EZLINK", "EzLink", "EZ-LINK", "FlashPay ATU",
+            "MB * MONEYBOOKERS.COM", "NETS VCASHCARD", "OANDA ASIA PAC", "OANDAASIAPA",
+            "PAYPAL * BIZCONSULTA", "PAYPAL * CAPITALROYA", "PAYPAL * OANDAASIAPA",
+            "Saxo Cap Mkts Pte Ltd", "SKR*SKRILL.COM", "SKR*xglobalmarkets.com", "SKYFX.COM",
+            "TRANSIT", "WWW.IGMARKETS.COM.SG", "IPAYMY", "RWS-LEVY", "SMOOVE PAY",
+            "SINGPOST-SAM", "RazerPay", "NORWDS"
+        ];
+        
+        const roundDownToNearestFive = (amount) => Math.floor(amount / 5) * 5;
+        
+        const isBlacklisted = (transaction) => {
+            const mccCode = parseInt(transaction.mcc_code, 10);
+            if (blacklistMcc.includes(mccCode)) {
+                return true;
+            }
+            
+            if (transaction.merchant_name) {
+                for (const prefix of blacklistMerchantPrefixes) {
+                    if (transaction.merchant_name.startsWith(prefix)) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        };
+
+        let contactlessBucket = 0;
+        let onlineBucket = 0;
+        let foreignCurrencyBucket = 0;
+
+        if (cardShortName === 'UOB VS') {
+            apiResponse.forEach((transactionObj) => {
+                const transaction = transactionObj.transaction;
+                
+                if (isBlacklisted(transaction)) {
+                    return;
+                }
+
+                if (transaction.original_currency && transaction.original_currency !== 'SGD') {
+                    foreignCurrencyBucket += transaction.base_currency_amount;
+                } else if (transaction.payment_tag === 'contactless') {
+                    contactlessBucket += transaction.base_currency_amount;
+                }
+            });
+
+            return { contactless: contactlessBucket, foreignCurrency: foreignCurrencyBucket };
+        } else {
+            apiResponse.forEach((transactionObj) => {
+                const transaction = transactionObj.transaction;
+                
+                if (isBlacklisted(transaction)) {
+                    return;
+                }
+
+                if (transaction.payment_tag === 'contactless') {
+                    contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
+                } else if (transaction.payment_tag === 'online') {
+                    const mccCode = parseInt(transaction.mcc_code, 10);
+                    if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
+                        onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
+                    }
+                }
+            });
+
+            return { contactless: contactlessBucket, online: onlineBucket };
+        }
+    }
+
+    // Check if button should be visible
+    function shouldShowButton(cardId) {
+        const cardDataStr = GM_getValue('cardData', '{}');
+        const cardData = JSON.parse(cardDataStr);
+
+        console.log('[HeyMax SubCaps Viewer] Checking visibility - cardData:', cardData);
+        console.log('[HeyMax SubCaps Viewer] Checking visibility - cardId:', cardId);
+
+        if (!cardData || !cardId) {
+            console.log('[HeyMax SubCaps Viewer] No cardData or cardId, hiding button');
+            return false;
+        }
+
+        const cardInfo = cardData[cardId];
+        console.log('[HeyMax SubCaps Viewer] Card info exists:', !!cardInfo);
+
+        if (!cardInfo || !cardInfo.card_tracker) {
+            console.log('[HeyMax SubCaps Viewer] No card info or card_tracker, hiding button');
+            return false;
+        }
+
+        const cardTrackerData = cardInfo.card_tracker.data;
+        console.log('[HeyMax SubCaps Viewer] Card tracker data exists:', !!cardTrackerData);
+
+        if (!cardTrackerData || !cardTrackerData.card) {
+            console.log('[HeyMax SubCaps Viewer] No card tracker data or card object, hiding button');
+            return false;
+        }
+
+        const shortName = cardTrackerData.card.short_name;
+        console.log('[HeyMax SubCaps Viewer] Card short_name:', shortName);
+        const isSupportedCard = shortName === 'UOB PPV' || shortName === 'UOB VS';
+        console.log('[HeyMax SubCaps Viewer] Is supported card:', isSupportedCard);
+        return isSupportedCard;
+    }
+
+    // Create the SubCaps button
+    function createButton() {
+        const button = document.createElement('button');
+        button.id = 'heymax-subcaps-button';
+        button.textContent = 'Subcaps';
+        button.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 10000;
+            transition: all 0.3s ease;
+            display: none;
+        `;
+
+        button.addEventListener('mouseenter', function() {
+            button.style.backgroundColor = '#45a049';
+            button.style.transform = 'scale(1.05)';
+        });
+
+        button.addEventListener('mouseleave', function() {
+            button.style.backgroundColor = '#4CAF50';
+            button.style.transform = 'scale(1)';
+        });
+
+        button.addEventListener('click', function() {
+            showOverlay();
+        });
+
+        return button;
+    }
+
+    // Create the overlay
+    function createOverlay() {
+        const overlay = document.createElement('div');
+        overlay.id = 'heymax-subcaps-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10001;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        `;
+
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            transition: color 0.3s ease;
+        `;
+
+        closeButton.addEventListener('mouseenter', function() {
+            closeButton.style.color = '#000';
+        });
+
+        closeButton.addEventListener('mouseleave', function() {
+            closeButton.style.color = '#666';
+        });
+
+        closeButton.addEventListener('click', function() {
+            hideOverlay();
+        });
+
+        const title = document.createElement('h2');
+        title.id = 'heymax-subcaps-title';
+        title.textContent = 'SubCaps Analysis';
+        title.style.cssText = `
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 24px;
+        `;
+
+        const resultsDiv = document.createElement('div');
+        resultsDiv.id = 'heymax-subcaps-results';
+
+        content.appendChild(closeButton);
+        content.appendChild(title);
+        content.appendChild(resultsDiv);
+        overlay.appendChild(content);
+
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                hideOverlay();
+            }
+        });
+
+        return overlay;
+    }
+
+    // Show overlay with calculated data
+    function showOverlay() {
+        const overlay = document.getElementById('heymax-subcaps-overlay');
+        const resultsDiv = document.getElementById('heymax-subcaps-results');
+        const titleElement = document.getElementById('heymax-subcaps-title');
+
+        if (!overlay || !resultsDiv) {
+            console.error('[HeyMax SubCaps Viewer] Overlay elements not found');
+            return;
+        }
+
+        resultsDiv.innerHTML = '<p style="text-align: center; color: #666;">Loading data...</p>';
+        overlay.style.display = 'flex';
+
+        const cardId = extractCardIdFromUrl();
+        const cardDataStr = GM_getValue('cardData', '{}');
+        const cardData = JSON.parse(cardDataStr);
+
+        console.log('[HeyMax SubCaps Viewer] showOverlay - cardData:', cardData);
+        console.log('[HeyMax SubCaps Viewer] showOverlay - cardId:', cardId);
+
+        if (!cardData || !cardId || !cardData[cardId]) {
+            resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No card data found</p>';
+            return;
+        }
+
+        const transactionsData = cardData[cardId].transactions;
+        if (!transactionsData || !transactionsData.data) {
+            resultsDiv.innerHTML = '<p style="color: #f44336;">Error: No transaction data available</p>';
+            return;
+        }
+
+        const cardTrackerData = cardData[cardId].card_tracker;
+        const cardShortName = cardTrackerData && cardTrackerData.data && cardTrackerData.data.card
+            ? cardTrackerData.data.card.short_name
+            : 'UOB PPV';
+
+        if (titleElement) {
+            titleElement.textContent = `${cardShortName} SubCaps Analysis`;
+        }
+
+        try {
+            const transactions = transactionsData.data;
+            const results = calculateBuckets(transactions, cardShortName);
+
+            displayResults(results, transactions.length, cardShortName);
+        } catch (error) {
+            console.error('[HeyMax SubCaps Viewer] Error calculating data:', error);
+            resultsDiv.innerHTML = '<p style="color: #f44336;">Error calculating data: ' + error.message + '</p>';
+        }
+    }
+
+    // Hide overlay
+    function hideOverlay() {
+        const overlay = document.getElementById('heymax-subcaps-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    // Display calculation results
+    function displayResults(results, transactionCount, cardShortName = 'UOB PPV') {
+        const resultsDiv = document.getElementById('heymax-subcaps-results');
+        if (!resultsDiv) return;
+
+        // Helper function to determine color based on value and card type
+        function getValueColor(value, bucketType, cardType) {
+            if (cardType === 'UOB VS') {
+                // For UOB VS: yellow < 1000, green 1000-1200, red > 1200
+                if (value < 1000) return '#FFC107'; // Yellow
+                if (value <= 1200) return '#4CAF50'; // Green
+                return '#f44336'; // Red
+            } else {
+                // For UOB PPV: green < 600, red >= 600
+                if (value < 600) return '#4CAF50'; // Green
+                return '#f44336'; // Red
+            }
+        }
+
+        const contactlessColor = getValueColor(results.contactless, 'contactless', cardShortName);
+        const contactlessLimit = cardShortName === 'UOB VS' ? '1200' : '600';
+
+        let html = `
+            <div style="margin-bottom: 20px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Analyzed ${transactionCount} transaction${transactionCount !== 1 ? 's' : ''}
+                </p>
+            </div>
+
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                <h3 style="margin-top: 0; color: #2196F3; font-size: 18px;">Contactless Bucket</h3>
+                <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+                    <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
+                    <span style="color: #333;"> / $${contactlessLimit}</span>
+                </p>
+                <p style="color: #666; font-size: 14px; margin-bottom: 0;">
+                    Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
+                </p>
+            </div>
+        `;
+
+        if (cardShortName === 'UOB VS') {
+            const foreignCurrencyColor = getValueColor(results.foreignCurrency, 'foreignCurrency', cardShortName);
+            html += `
+                <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Foreign Currency Bucket</h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+                        <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
+                        <span style="color: #333;"> / $1200</span>
+                    </p>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 0;">
+                        Total from non-SGD transactions
+                    </p>
+                </div>
+            `;
+        } else {
+            const onlineColor = getValueColor(results.online, 'online', cardShortName);
+            html += `
+                <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Online Bucket</h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+                        <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
+                        <span style="color: #333;"> / $600</span>
+                    </p>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 0;">
+                        Total from eligible online transactions (rounded down to nearest $5)
+                    </p>
+                </div>
+            `;
+        }
+
+        html += `
+            <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px;">
+                <p style="margin: 0; font-size: 14px; color: #1976D2;">
+                    <strong>Note:</strong> These calculations are based on the transaction data that has been loaded so far.
+                </p>
+            </div>
+        `;
+
+        resultsDiv.innerHTML = html;
+    }
+
+    // Update button visibility
+    function updateButtonVisibility() {
+        const button = document.getElementById('heymax-subcaps-button');
+        if (!button) return;
+
+        const cardId = extractCardIdFromUrl();
+        console.log('[HeyMax SubCaps Viewer] Extracted card ID:', cardId);
+
+        if (cardId) {
+            const shouldShow = shouldShowButton(cardId);
+            console.log('[HeyMax SubCaps Viewer] Should show button:', shouldShow);
+            if (shouldShow) {
+                button.style.display = 'block';
+                console.log('[HeyMax SubCaps Viewer] SubCaps button displayed for supported card');
+            } else {
+                button.style.display = 'none';
+                console.log('[HeyMax SubCaps Viewer] SubCaps button hidden (conditions not met)');
+            }
+        } else {
+            button.style.display = 'none';
+            console.log('[HeyMax SubCaps Viewer] No card ID found in URL, button will remain hidden');
+        }
+    }
+
+    // Initialize UI
+    function initializeUI() {
+        if (!document.body) {
+            console.log('[HeyMax SubCaps Viewer] document.body not ready, waiting...');
+            setTimeout(initializeUI, 100);
+            return;
+        }
+
+        console.log('[HeyMax SubCaps Viewer] Initializing UI components...');
+
+        const button = createButton();
+        document.body.appendChild(button);
+        console.log('[HeyMax SubCaps Viewer] Button element created and appended');
+
+        const overlay = createOverlay();
+        document.body.appendChild(overlay);
+        console.log('[HeyMax SubCaps Viewer] Overlay element created and appended');
+
+        updateButtonVisibility();
+
+        let lastUrl = window.location.href;
+        let debounceTimer = null;
+        const observer = new MutationObserver(function(mutations) {
+            const hasSignificantChange = mutations.some(mutation =>
+                mutation.type === 'childList' && mutation.addedNodes.length > 0
+            );
+
+            if (!hasSignificantChange) {
+                return;
+            }
+
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+
+            debounceTimer = setTimeout(function() {
+                if (window.location.href !== lastUrl) {
+                    lastUrl = window.location.href;
+                    updateButtonVisibility();
+                }
+            }, 250);
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Also periodically check for button visibility (in case storage updates)
+        setInterval(updateButtonVisibility, 2000);
+    }
+
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeUI);
+    } else {
+        initializeUI();
+    }
+
+    console.log('[HeyMax SubCaps Viewer] Tampermonkey script initialized');
+})();

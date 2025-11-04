@@ -18,15 +18,29 @@ A Chrome extension using Manifest V3 that monitors network requests by monkey pa
 
 ## Quick Start
 
+### Chrome Extension (Recommended for Chrome/Edge)
+
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
 3. Click **"Load unpacked"** and select the `src` directory
 4. Navigate to https://heymax.ai/cards/your-cards/ or any subpage
 5. Open browser console (F12) to see logged URLs and response data
 
+### Tampermonkey Userscript (Cross-browser alternative)
+
+For Firefox, Safari, Opera, or if you prefer userscripts:
+
+1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser
+2. Open the script at `tampermonkey/heymax-subcaps-viewer.user.js`
+3. Copy the contents and create a new userscript in Tampermonkey
+4. Navigate to https://heymax.ai/cards/your-cards/ and the script will activate
+
+See [tampermonkey/README.md](tampermonkey/README.md) for detailed Tampermonkey instructions.
+
 ## Documentation
 
 - **[EXTENSION_README.md](EXTENSION_README.md)** - Comprehensive extension documentation
+- **[tampermonkey/README.md](tampermonkey/README.md)** - Tampermonkey userscript documentation
 - **[src/test/TESTING.md](src/test/TESTING.md)** - Detailed testing instructions
 - **[src/test/test.html](src/test/test.html)** - Interactive test page to verify functionality
 
