@@ -257,7 +257,7 @@
     
     const title = document.createElement('h2');
     title.id = 'heymax-subcaps-title';
-    title.textContent = 'SubCaps Analysis';
+    title.textContent = 'Subcaps Analysis';
     title.style.cssText = `
       margin-top: 0;
       margin-bottom: 20px;
@@ -322,7 +322,7 @@
       
       // Update title based on card type
       if (titleElement) {
-        titleElement.textContent = `${cardShortName} SubCaps Analysis`;
+        titleElement.textContent = `${cardShortName} Subcaps Analysis`;
       }
       
       // Calculate buckets using the embedded calculateBuckets function
@@ -377,7 +377,7 @@
       </div>
       
       <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
-        <h3 style="margin-top: 0; color: #2196F3; font-size: 18px;">Contactless Bucket</h3>
+        <h3 style="margin-top: 0; color: #333; font-size: 18px;">Contactless Bucket</h3>
         <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
           <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
           <span style="color: #333;"> / $${contactlessLimit}</span>
@@ -385,6 +385,11 @@
         <p style="color: #666; font-size: 14px; margin-bottom: 0;">
           Total from contactless payments${cardShortName === 'UOB PPV' ? ' (rounded down to nearest $5)' : ''}
         </p>
+        ${cardShortName === 'UOB VS' && results.contactless < 1000 ? `
+        <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
+          To start earning bonus miles, you must spend at least $1,000 in this category.
+        </p>
+        ` : ''}
       </div>
     `;
     
@@ -393,7 +398,7 @@
       // Display Foreign Currency bucket for UOB VS
       html += `
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Foreign Currency Bucket</h3>
+          <h3 style="margin-top: 0; color: #333; font-size: 18px;">Foreign Currency Bucket</h3>
           <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
             <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
             <span style="color: #333;"> / $1200</span>
@@ -401,6 +406,11 @@
           <p style="color: #666; font-size: 14px; margin-bottom: 0;">
             Total from non-SGD transactions
           </p>
+          ${results.foreignCurrency < 1000 ? `
+          <p style="color: #F57C00; font-size: 14px; margin-top: 10px; margin-bottom: 0; font-weight: 500;">
+            To start earning bonus miles, you must spend at least $1,000 in this category.
+          </p>
+          ` : ''}
         </div>
       `;
     } else {
@@ -408,7 +418,7 @@
       // Display Online bucket for UOB PPV
       html += `
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Online Bucket</h3>
+          <h3 style="margin-top: 0; color: #333; font-size: 18px;">Online Bucket</h3>
           <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
             <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
             <span style="color: #333;"> / $600</span>
