@@ -669,7 +669,7 @@
             </div>
 
             <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
-                <h3 style="margin-top: 0; color: #2196F3; font-size: 18px;">Contactless Bucket</h3>
+                <h3 style="margin-top: 0; color: #333; font-size: 18px;">Contactless Bucket</h3>
                 <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
                     <span style="color: ${contactlessColor};">$${results.contactless.toFixed(2)}</span>
                     <span style="color: #333;"> / $${contactlessLimit}</span>
@@ -689,7 +689,7 @@
             const foreignCurrencyColor = getValueColor(results.foreignCurrency, 'foreignCurrency', cardShortName);
             html += `
                 <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
-                    <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Foreign Currency Bucket</h3>
+                    <h3 style="margin-top: 0; color: #333; font-size: 18px;">Foreign Currency Bucket</h3>
                     <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
                         <span style="color: ${foreignCurrencyColor};">$${results.foreignCurrency.toFixed(2)}</span>
                         <span style="color: #333;"> / $1200</span>
@@ -708,7 +708,7 @@
             const onlineColor = getValueColor(results.online, 'online', cardShortName);
             html += `
                 <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px;">
-                    <h3 style="margin-top: 0; color: #4CAF50; font-size: 18px;">Online Bucket</h3>
+                    <h3 style="margin-top: 0; color: #333; font-size: 18px;">Online Bucket</h3>
                     <p style="font-size: 32px; font-weight: bold; margin: 10px 0;">
                         <span style="color: ${onlineColor};">$${results.online.toFixed(2)}</span>
                         <span style="color: #333;"> / $600</span>
