@@ -23,9 +23,13 @@ The overlay uses color coding to help you understand your status instantly:
 - **Yellow (UOB VS only):** You haven't hit the $1,000 threshold yet to start earning bonus miles
 - **Red:** You've reached or exceeded the limit for this bucket
 
-*[Screenshot placeholder: Show the subcaps overlay displaying bucket information for a UOB PPV card]*
+**UOB PPV card subcaps overlay:**
 
-*[Screenshot placeholder: Show the subcaps overlay displaying bucket information for a UOB VS card]*
+![UOB PPV Subcaps Overlay](assets/uob_ppv.jpg)
+
+**UOB VS card subcaps overlay:**
+
+![UOB VS Subcaps Overlay](assets/uob_vs.jpg)
 
 ### Completely Private & Secure
 
@@ -46,7 +50,7 @@ This isn't some third-party service collecting your spending habits. It's a simp
 5. **Click the green "Subcaps" button** that appears in the bottom-right corner
 6. **See your spend breakdown** in a clean overlay
 
-*[Screenshot placeholder: Show the green "Subcaps" button appearing on a HeyMax card detail page]*
+The screenshots above show how the subcaps overlay appears when you click the button on your card page.
 
 That's it. No configuration. No setup. It just works.
 
