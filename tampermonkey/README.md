@@ -14,6 +14,23 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 - **Plus Subcap Tracking**: This script adds subcap tracking functionality that even the official app lacks
 - **Privacy**: All calculations happen locally on your device
 
+### Add HeyMax to Your Homescreen
+For quick access like a native app, add HeyMax to your homescreen:
+
+**On iOS (Edge Mobile):**
+1. Open https://heymax.ai in Edge
+2. Tap the **Share** button (square with arrow)
+3. Scroll down and tap **Add to Home Screen**
+4. Name it "HeyMax" and tap **Add**
+
+**On Android (Edge Mobile):**
+1. Open https://heymax.ai in Edge
+2. Tap the **menu** (three dots)
+3. Tap **Add to phone** or **Add to Home screen**
+4. Confirm by tapping **Add**
+
+Now you can launch HeyMax directly from your homescreen—just like an app!
+
 ## What This Script Does for You
 
 ### Visual Subcap Tracking at a Glance
