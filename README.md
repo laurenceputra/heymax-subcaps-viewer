@@ -11,13 +11,11 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 ✅ **Multi-Card Support**: Works with both UOB PPV and UOB VS cards  
 ✅ **Privacy-First**: All data stays in your browser—nothing sent to external servers  
 ✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten  
-✅ **Remembers Your Data**: Your subcap information is saved between visits so you don't have to wait for it to reload each time
+✅ **Remembers Your Data**: Your subcap information is saved locally on your device and stays completely private—no waiting for it to reload each time
 
-## 📱 Use Edge Mobile as a HeyMax App Replacement
+## 📱 Use Edge Mobile Instead of the HeyMax App
 
-**Don't have or want the HeyMax app?** You can use Microsoft Edge on your mobile device with this Tampermonkey script as a full replacement for the HeyMax app — with the added benefit of subcap tracking that the official app doesn't provide!
-
-The HeyMax app is essentially a wrapper around their mobile website, so you get the exact same experience in Edge Mobile. But unlike the app, using the mobile site through Edge allows you to install browser extensions like this script, giving you customizations and features that aren't possible with the official app.
+**Don't have or want the HeyMax app?** The HeyMax mobile site offers similar features to the app, and using Edge Mobile lets you install browser extensions like this script—giving you subcap tracking that the official app doesn't provide!
 
 ### Why Edge Mobile?
 - **Tampermonkey Support**: Unlike most mobile browsers, Edge Mobile supports browser extensions including Tampermonkey
