@@ -7,10 +7,10 @@ If you're using UOB PPV (Preferred Platinum Visa) or UOB VS (Visa Signature) car
 ## Features
 
 ✅ **Visual Subcap Tracking**: See your spending buckets at a glance with color-coded progress indicators  
-✅ **Network Request Monitoring**: Automatically intercepts transaction data from HeyMax  
+✅ **Automatic Updates**: Your subcap data updates automatically as you browse HeyMax  
 ✅ **Multi-Card Support**: Works with both UOB PPV and UOB VS cards  
 ✅ **Privacy-First**: All data stays in your browser—nothing sent to external servers  
-✅ **Auto-Recovery**: Automatically re-applies patches if they are detected as overwritten  
+✅ **Always Working**: The script keeps running reliably in the background  
 ✅ **Remembers Your Data**: Your subcap information is saved locally on your device and stays completely private—no waiting for it to reload each time
 
 ## 📱 Use Edge Mobile Instead of the HeyMax App
@@ -99,26 +99,14 @@ The overlay uses color coding to help you understand your status instantly:
 
 ## Usage
 
-Once installed, the script will automatically:
-
-1. Monitor all network requests on https://heymax.ai/* pages
-2. Intercept and store relevant API responses
-3. Display a "Subcaps" button on supported card detail pages
+Once installed, the script works automatically in the background. Just browse HeyMax normally and your subcap data will be tracked.
 
 ### Viewing SubCaps Data
 
-1. Navigate to a supported card detail page (e.g., https://heymax.ai/cards/your-cards/[card-id])
+1. Go to your card detail page on HeyMax (e.g., https://heymax.ai/cards/your-cards/[card-id])
 2. Wait for the page to load your transaction data
 3. Once data is loaded, a green "Subcaps" button will appear in the bottom-right corner
-4. Click the button to view your SubCaps analysis in an overlay modal
-
-### Console Logs (For Debugging)
-
-Open the browser console (F12 or Ctrl+Shift+I) to see:
-- Network request interception logs
-- API response data
-- Storage operations
-- Button visibility checks
+4. Click the button to view your SubCaps analysis
 
 ## FAQ
 
@@ -151,9 +139,8 @@ The code is open-source, so you can review it yourself. It doesn't send any data
 
 **The "Subcaps" button isn't showing up:**
 - Make sure you're on a card detail page (not the main card list page)
-- Wait for the page to fully load transaction data (it can take a few seconds)
+- Wait for the page to fully load (it can take a few seconds)
 - Verify that your card is a UOB PPV or UOB VS card
-- Check your browser console (F12 on desktop) for any error messages
 
 **The numbers look wrong:**
 - Refresh the page to reload transaction data
@@ -163,17 +150,7 @@ The code is open-source, so you can review it yourself. It doesn't send any data
 **The script isn't working at all:**
 - Ensure Tampermonkey is installed and enabled
 - Verify the script is active in Tampermonkey's dashboard
-- Verify you're on https://heymax.ai/* pages
 - Try disabling other browser extensions that might conflict
-
-**Data not persisting:**
-- Tampermonkey storage is isolated per script
-- Clearing browser data may not affect Tampermonkey storage
-- To reset, open Tampermonkey dashboard → Storage → Delete values
-
-**Console shows "Patches being overwritten" warnings:**
-- This is normal behavior when other scripts modify fetch/XHR
-- The script automatically detects and re-applies patches every second
 
 ## Security & Privacy
 
