@@ -169,6 +169,47 @@ For developers and contributors:
 
 - **[docs/TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md)** - Comprehensive technical documentation including architecture overview, network interception details, data storage structure, SubCap calculation logic, and troubleshooting guide
 
+## Contributing
+
+This project uses a structured multi-role development workflow to ensure quality implementations. When working on new features or bug fixes, the workflow follows a Product Manager → Staff Engineer → QA sequence.
+
+### Development Workflow
+
+**For Feature Development (STRICT mode):**
+1. **Product Manager Analysis** - Define requirements, user stories, and acceptance criteria
+2. **Staff Engineer Implementation** - Design and implement the technical solution
+3. **QA Testing** - Verify implementation meets acceptance criteria
+
+**For Bug Fixes (FLEXIBLE mode):**
+1. **Staff Engineer Fix** - Diagnose and implement the fix
+2. **QA Validation** - Verify fix works and no regressions
+
+### How to Contribute
+
+When submitting issues or pull requests:
+
+1. **Classify your task**: Is it a FEATURE (new functionality) or BUG (defect fix)?
+2. **For features**: Provide a clear problem statement and desired outcome
+3. **For bugs**: Include steps to reproduce, expected vs actual behavior
+4. **Testing**: Always test with both UOB PPV and UOB VS cards when applicable
+5. **Browser compatibility**: Verify changes work across Chrome, Firefox, Safari, Opera, Edge (desktop + mobile)
+
+### GitHub Copilot Workspace
+
+For contributors using GitHub Copilot Workspace:
+
+- The repository includes agent configuration files in `.github/agents/` (product-manager.md, staff-engineer.md, qa.md)
+- See `.github/copilot-instructions.md` for detailed workflow process
+- All outputs should be consolidated into a single implementation plan
+
+### Key Development Guidelines
+
+- **Privacy first**: All data must stay local (browser storage only)
+- **No external API calls**: Network interception is read-only
+- **Card-specific testing**: Always test with both UOB PPV and UOB VS cards
+- **Browser compatibility**: Test across all supported browsers
+- **Code patterns**: Use ES6+, async/await, defensive programming
+
 ## License
 
 See [LICENSE](LICENSE) file for details.
