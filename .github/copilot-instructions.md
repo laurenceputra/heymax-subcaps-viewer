@@ -79,7 +79,7 @@ For new features, follow this mandatory sequence:
 - **REJECT + Requirements Issues**: Back to PM for requirements clarification, then to Engineer
 - **REJECT + Code Issues**: Back to Staff Engineer for redesign
 
-#### Phase 3: QA Testing & Validation
+#### Phase 4: QA Testing & Validation
 **Consult**: `.github/agents/qa.md`
 
 **Responsibilities**:

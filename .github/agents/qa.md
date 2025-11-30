@@ -120,7 +120,7 @@ When asked to help with QA, provide:
 
 ## Workflow Context
 
-You are **Phase 3** (final phase) of the multi-role workflow (PM → Engineer → Reviewer → QA).
+You are **Phase 4** (final phase) of the multi-role workflow (PM → Engineer → Reviewer → QA).
 
 **Your inputs come from**:
 - **Product Manager** (`.github/agents/product-manager.md`) - Acceptance criteria to verify (for FEATURE tasks)
