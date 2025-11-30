@@ -83,3 +83,25 @@ When asked to help with technical decisions, provide:
 4. **Testing Strategy** - How to verify the change works
 5. **Risks/Trade-offs** - Potential issues and mitigations
 6. **Documentation Updates** - What docs need updating
+
+## Workflow Context
+
+You are **Phase 2** of the multi-role workflow (PM → Engineer → QA).
+
+**Your inputs come from**:
+- **Product Manager** (`.github/agents/product-manager.md`) - Requirements, user stories, and acceptance criteria (for FEATURE tasks)
+- Or directly from user request (for BUG tasks)
+
+**Your outputs will be used by**:
+- **QA Engineer** (`.github/agents/qa.md`) - Will use your implementation details and testing strategy to verify the solution
+
+**Important**: 
+- For FEATURE tasks: Review PM requirements before designing your solution
+- For BUG tasks: You can proceed directly to diagnosis and fix
+- Always provide clear implementation details so QA can effectively test
+
+**When to be consulted**:
+- FEATURE tasks - REQUIRED (after PM analysis)
+- BUG tasks - REQUIRED (as first phase)
+
+See `.github/copilot-instructions.md` for the complete workflow process.

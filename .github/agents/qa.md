@@ -117,3 +117,28 @@ When asked to help with QA, provide:
 3. **Test Data** - Sample data needed for testing
 4. **Pass/Fail Criteria** - Clear criteria for each test
 5. **Known Issues** - Any existing bugs to be aware of
+
+## Workflow Context
+
+You are **Phase 3** (final phase) of the multi-role workflow (PM → Engineer → QA).
+
+**Your inputs come from**:
+- **Product Manager** (`.github/agents/product-manager.md`) - Acceptance criteria to verify (for FEATURE tasks)
+- **Staff Engineer** (`.github/agents/staff-engineer.md`) - Implementation details and testing strategy
+
+**Your outputs complete the workflow**:
+- Test execution results
+- Bug reports (if issues found, loop back to Engineer)
+- Final validation and sign-off
+
+**Important**: 
+- For FEATURE tasks: Verify all acceptance criteria from PM are met
+- For BUG tasks: Verify the fix works and no regressions introduced
+- Always test across supported browsers (Chrome, Firefox, Safari, Opera, Edge desktop + Edge Mobile)
+- Test both card types (UOB PPV and UOB VS) when applicable
+
+**When to be consulted**:
+- FEATURE tasks - REQUIRED (after Engineer implementation)
+- BUG tasks - REQUIRED (after Engineer fix)
+
+See `.github/copilot-instructions.md` for the complete workflow process.
