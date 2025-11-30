@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.5.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -315,6 +315,142 @@
         return match ? match[1] : null;
     }
 
+    // ============================================================================
+    // BILLING CYCLE MANAGEMENT
+    // ============================================================================
+
+    // Get billing cycle configuration for a card
+    function getBillingCycleConfig(cardId) {
+        const configStr = GM_getValue('billingCycleConfig', '{}');
+        const config = safeJSONParse(configStr, {});
+        
+        // Default to 1st of month if not configured
+        return config[cardId] || { dayOfMonth: 1 };
+    }
+
+    // Set billing cycle configuration for a card
+    function setBillingCycleConfig(cardId, dayOfMonth) {
+        const configStr = GM_getValue('billingCycleConfig', '{}');
+        const config = safeJSONParse(configStr, {});
+        
+        config[cardId] = { 
+            dayOfMonth: dayOfMonth,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        GM_setValue('billingCycleConfig', JSON.stringify(config));
+        infoLog(`Billing cycle set to day ${dayOfMonth} for card ${cardId}`, '#2196F3');
+    }
+
+    // Calculate current billing cycle start and end dates
+    function getCurrentBillingCycleDates(dayOfMonth) {
+        const now = new Date();
+        const currentDay = now.getDate();
+        
+        let cycleStartDate;
+        let cycleEndDate;
+        
+        if (currentDay >= dayOfMonth) {
+            // Current billing cycle started this month
+            cycleStartDate = new Date(now.getFullYear(), now.getMonth(), dayOfMonth);
+            cycleEndDate = new Date(now.getFullYear(), now.getMonth() + 1, dayOfMonth - 1, 23, 59, 59);
+        } else {
+            // Current billing cycle started last month
+            cycleStartDate = new Date(now.getFullYear(), now.getMonth() - 1, dayOfMonth);
+            cycleEndDate = new Date(now.getFullYear(), now.getMonth(), dayOfMonth - 1, 23, 59, 59);
+        }
+        
+        return { cycleStartDate, cycleEndDate };
+    }
+
+    // Get transaction date from transaction object
+    function getTransactionDate(transaction) {
+        // Try different possible date fields
+        const dateStr = transaction.transaction_date || 
+                       transaction.date || 
+                       transaction.created_at || 
+                       transaction.timestamp;
+        
+        if (!dateStr) {
+            debugLog('[HeyMax SubCaps Viewer] No date found in transaction:', transaction);
+            return null;
+        }
+        
+        try {
+            return new Date(dateStr);
+        } catch (error) {
+            errorLog('Invalid transaction date format:', dateStr);
+            return null;
+        }
+    }
+
+    // Filter transactions by current billing cycle
+    function filterTransactionsByBillingCycle(transactions, cardId) {
+        const config = getBillingCycleConfig(cardId);
+        const { cycleStartDate, cycleEndDate } = getCurrentBillingCycleDates(config.dayOfMonth);
+        
+        debugLog('[HeyMax SubCaps Viewer] Filtering transactions for billing cycle:', {
+            start: cycleStartDate.toISOString(),
+            end: cycleEndDate.toISOString(),
+            dayOfMonth: config.dayOfMonth
+        });
+        
+        const filteredTransactions = [];
+        const outOfCycleTransactions = [];
+        
+        transactions.forEach(transactionObj => {
+            const transaction = transactionObj.transaction;
+            const transactionDate = getTransactionDate(transaction);
+            
+            if (!transactionDate) {
+                // If we can't determine date, include it (fail-safe)
+                filteredTransactions.push(transactionObj);
+                return;
+            }
+            
+            if (transactionDate >= cycleStartDate && transactionDate <= cycleEndDate) {
+                filteredTransactions.push(transactionObj);
+            } else {
+                outOfCycleTransactions.push(transactionObj);
+            }
+        });
+        
+        debugLog(`[HeyMax SubCaps Viewer] Filtered ${filteredTransactions.length} in-cycle, ${outOfCycleTransactions.length} out-of-cycle`);
+        
+        return {
+            inCycleTransactions: filteredTransactions,
+            outOfCycleTransactions: outOfCycleTransactions,
+            cycleStartDate: cycleStartDate,
+            cycleEndDate: cycleEndDate
+        };
+    }
+
+    // Get date range from transactions
+    function getTransactionDateRange(transactions) {
+        if (!transactions || transactions.length === 0) {
+            return null;
+        }
+        
+        let earliestDate = null;
+        let latestDate = null;
+        
+        transactions.forEach(transactionObj => {
+            const transaction = transactionObj.transaction;
+            const date = getTransactionDate(transaction);
+            
+            if (date) {
+                if (!earliestDate || date < earliestDate) {
+                    earliestDate = date;
+                }
+                if (!latestDate || date > latestDate) {
+                    latestDate = date;
+                }
+            }
+        });
+        
+        return { earliestDate, latestDate };
+    }
+
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV') {
         const ppvShoppingMcc = [4816, 5262, 5306, 5309, 5310, 5311, 5331, 5399, 5611, 5621, 5631, 5641, 5651, 5661, 5691, 5699, 5732, 5733, 5734, 5735, 5912, 5942, 5944, 5945, 5946, 5947, 5948, 5949, 5964, 5965, 5966, 5967, 5968, 5969, 5970, 5992, 5999];
@@ -602,9 +738,26 @@
 
         try {
             const transactions = transactionsData.data;
-            const results = calculateBuckets(transactions, cardShortName);
+            
+            // Filter transactions by billing cycle
+            const billingCycleData = filterTransactionsByBillingCycle(transactions, cardId);
+            const filteredTransactions = billingCycleData.inCycleTransactions;
+            
+            // Calculate date range for display
+            const allDateRange = getTransactionDateRange(transactions);
+            const filteredDateRange = getTransactionDateRange(filteredTransactions);
+            
+            const results = calculateBuckets(filteredTransactions, cardShortName);
 
-            displayResults(results, transactions.length, cardShortName);
+            displayResults(results, filteredTransactions.length, cardShortName, {
+                cardId: cardId,
+                allTransactionCount: transactions.length,
+                filteredTransactionCount: filteredTransactions.length,
+                cycleStartDate: billingCycleData.cycleStartDate,
+                cycleEndDate: billingCycleData.cycleEndDate,
+                allDateRange: allDateRange,
+                filteredDateRange: filteredDateRange
+            });
         } catch (error) {
             errorLog('Error calculating data:', error);
             resultsDiv.innerHTML = '<p style="color: #f44336;">Error calculating data: ' + error.message + '</p>';
@@ -620,7 +773,7 @@
     }
 
     // Display calculation results
-    function displayResults(results, transactionCount, cardShortName = 'UOB PPV') {
+    function displayResults(results, transactionCount, cardShortName = 'UOB PPV', metadata = {}) {
         const resultsDiv = document.getElementById('heymax-subcaps-results');
         if (!resultsDiv) return;
 
@@ -638,14 +791,59 @@
             }
         }
 
+        // Format date for display
+        function formatDate(date) {
+            if (!date) return 'Unknown';
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
         const contactlessColor = getValueColor(results.contactless, 'contactless', cardShortName);
         const contactlessLimit = cardShortName === 'UOB VS' ? '1200' : '600';
 
-        let html = `
+        // Build billing cycle info
+        let billingCycleHTML = '';
+        if (metadata.cycleStartDate && metadata.cycleEndDate) {
+            const config = getBillingCycleConfig(metadata.cardId);
+            billingCycleHTML = `
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #2196F3;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <strong style="color: #1976D2; font-size: 14px;">Current Billing Cycle</strong>
+                            <p style="margin: 5px 0 0 0; color: #555; font-size: 13px;">
+                                ${formatDate(metadata.cycleStartDate)} - ${formatDate(metadata.cycleEndDate)}
+                            </p>
+                        </div>
+                        <button id="change-cycle-btn" style="
+                            padding: 6px 12px;
+                            background-color: #2196F3;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            font-size: 12px;
+                            cursor: pointer;
+                        ">Change</button>
+                    </div>
+                    ${metadata.allTransactionCount > metadata.filteredTransactionCount ? `
+                        <p style="margin: 0; color: #F57C00; font-size: 12px;">
+                            ⚠️ Showing ${metadata.filteredTransactionCount} of ${metadata.allTransactionCount} transactions 
+                            (${metadata.allTransactionCount - metadata.filteredTransactionCount} excluded from other billing cycles)
+                        </p>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        let html = billingCycleHTML + `
             <div style="margin-bottom: 20px;">
-                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 5px;">
                     Analyzed ${transactionCount} transaction${transactionCount !== 1 ? 's' : ''}
                 </p>
+                ${metadata.filteredDateRange && metadata.filteredDateRange.earliestDate ? `
+                    <p style="color: #999; font-size: 12px; margin: 0;">
+                        ${formatDate(metadata.filteredDateRange.earliestDate)} to ${formatDate(metadata.filteredDateRange.latestDate)}
+                    </p>
+                ` : ''}
             </div>
 
             <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
@@ -703,12 +901,37 @@
         html += `
             <div style="margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 8px;">
                 <p style="margin: 0; font-size: 14px; color: #1976D2;">
-                    <strong>Note:</strong> These calculations are based on the transaction data that has been loaded so far.
+                    <strong>Note:</strong> These calculations are based on transactions within your current billing cycle.
                 </p>
             </div>
         `;
 
         resultsDiv.innerHTML = html;
+        
+        // Add event listener for "Change" billing cycle button
+        const changeCycleBtn = document.getElementById('change-cycle-btn');
+        if (changeCycleBtn && metadata.cardId) {
+            changeCycleBtn.addEventListener('click', function() {
+                const config = getBillingCycleConfig(metadata.cardId);
+                const currentDay = config.dayOfMonth;
+                
+                const newDay = prompt(
+                    `Enter the day of the month your billing cycle starts (1-28):\n\nCurrent: Day ${currentDay}`,
+                    currentDay
+                );
+                
+                if (newDay !== null) {
+                    const dayNum = parseInt(newDay, 10);
+                    if (dayNum >= 1 && dayNum <= 28) {
+                        setBillingCycleConfig(metadata.cardId, dayNum);
+                        // Refresh the overlay
+                        showOverlay();
+                    } else {
+                        alert('Please enter a valid day between 1 and 28.');
+                    }
+                }
+            });
+        }
     }
 
     // Update button visibility
