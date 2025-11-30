@@ -47,7 +47,7 @@ The overlay uses color coding to help you understand your status instantly:
 
 ### Edge Mobile (Mobile Alternative)
 
-**Prefer using HeyMax on your phone instead of the app?** Edge Mobile is the only mobile browser that supports Tampermonkey extensions AND works with HeyMax.ai (Firefox Mobile and Kiwi Browser redirect to app download instead of loading the website).
+**Prefer using HeyMax on your phone instead of on the desktop?** Edge Mobile is the only mobile browser that supports Tampermonkey extensions AND works with HeyMax.ai (Firefox Mobile and Kiwi Browser redirect to app download instead of loading the website).
 
 **Why use Edge Mobile with this script?**
 - Get subcap tracking on mobile (not available in the official HeyMax app)
