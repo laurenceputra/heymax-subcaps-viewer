@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.8.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -24,7 +24,25 @@
     // DEBUG CONFIGURATION
     // ============================================================================
     
-    const DEBUG_MODE = false; // Set to true for verbose logging
+    // Get debug mode from storage, default to false
+    let DEBUG_MODE = GM_getValue('debugMode', false);
+    
+    // Toggle debug mode
+    function toggleDebugMode() {
+        DEBUG_MODE = !DEBUG_MODE;
+        GM_setValue('debugMode', DEBUG_MODE);
+        infoLog(`Debug mode ${DEBUG_MODE ? 'ENABLED' : 'DISABLED'}`, DEBUG_MODE ? '#FF9800' : '#4CAF50');
+        return DEBUG_MODE;
+    }
+    
+    // Keyboard shortcut: Alt+Shift+D
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.shiftKey && e.key === 'D') {
+            e.preventDefault();
+            const newState = toggleDebugMode();
+            alert(`Debug Mode ${newState ? 'ENABLED' : 'DISABLED'}\n\nCheck browser console for detailed logs.`);
+        }
+    });
     
     // Logging utility functions
     function debugLog(...args) {
@@ -532,6 +550,36 @@
             hideOverlay();
         });
 
+        // Settings button
+        const settingsButton = document.createElement('button');
+        settingsButton.textContent = '⚙️';
+        settingsButton.title = 'Settings';
+        settingsButton.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 55px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            transition: transform 0.3s ease;
+        `;
+
+        settingsButton.addEventListener('mouseenter', function() {
+            settingsButton.style.transform = 'rotate(30deg)';
+        });
+
+        settingsButton.addEventListener('mouseleave', function() {
+            settingsButton.style.transform = 'rotate(0deg)';
+        });
+
+        settingsButton.addEventListener('click', function() {
+            showSettingsDialog();
+        });
+
         const title = document.createElement('h2');
         title.id = 'heymax-subcaps-title';
         title.textContent = 'Subcaps Analysis';
@@ -546,6 +594,7 @@
         resultsDiv.id = 'heymax-subcaps-results';
 
         content.appendChild(closeButton);
+        content.appendChild(settingsButton);
         content.appendChild(title);
         content.appendChild(resultsDiv);
         overlay.appendChild(content);
@@ -616,6 +665,74 @@
         const overlay = document.getElementById('heymax-subcaps-overlay');
         if (overlay) {
             overlay.style.display = 'none';
+        }
+    }
+
+    // Show settings dialog
+    function showSettingsDialog() {
+        const currentDebugMode = DEBUG_MODE;
+        
+        const settingsHTML = `
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin-top: 0; color: #333;">Settings</h3>
+            </div>
+            
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="debug-mode-checkbox" ${currentDebugMode ? 'checked' : ''} 
+                        style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                    <div>
+                        <strong style="display: block; margin-bottom: 5px;">Debug Mode</strong>
+                        <span style="color: #666; font-size: 13px;">Enable verbose logging to browser console</span>
+                    </div>
+                </label>
+            </div>
+            
+            <div style="background-color: #e3f2fd; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <p style="margin: 0; font-size: 13px; color: #1976D2;">
+                    <strong>Keyboard Shortcut:</strong> Alt+Shift+D
+                </p>
+            </div>
+            
+            <div style="background-color: #fff3cd; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 12px; color: #856404;">
+                    ⚠️ Debug mode may impact performance. Enable only when troubleshooting issues.
+                </p>
+            </div>
+            
+            <div style="text-align: right;">
+                <button id="settings-close-btn" style="
+                    padding: 8px 20px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    cursor: pointer;
+                ">Close</button>
+            </div>
+        `;
+        
+        const resultsDiv = document.getElementById('heymax-subcaps-results');
+        if (resultsDiv) {
+            resultsDiv.innerHTML = settingsHTML;
+            
+            // Add event listener for checkbox
+            const debugCheckbox = document.getElementById('debug-mode-checkbox');
+            if (debugCheckbox) {
+                debugCheckbox.addEventListener('change', function() {
+                    toggleDebugMode();
+                });
+            }
+            
+            // Add event listener for close button
+            const closeBtn = document.getElementById('settings-close-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    // Refresh the overlay to show main content again
+                    showOverlay();
+                });
+            }
         }
     }
 
