@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HeyMax SubCaps Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2.0
+// @version      1.3.0
 // @description  Monitor network requests and display SubCaps calculations for UOB cards on HeyMax
 // @author       Laurence Putra Franslay (@laurenceputra)
 // @source       https://github.com/laurenceputra/heymax-subcaps-viewer-chromium/
@@ -42,8 +42,105 @@
     }
 
     // ============================================================================
+    // STORAGE VERSIONING & MIGRATION SYSTEM
+    // ============================================================================
+    
+    const CURRENT_STORAGE_VERSION = 2;
+    
+    // Initialize storage with versioning
+    function initializeStorage() {
+        const storageVersion = GM_getValue('storageVersion', 1);
+        
+        if (storageVersion < CURRENT_STORAGE_VERSION) {
+            infoLog(`Migrating storage from v${storageVersion} to v${CURRENT_STORAGE_VERSION}...`, '#FF9800');
+            migrateStorage(storageVersion, CURRENT_STORAGE_VERSION);
+        } else {
+            debugLog(`[HeyMax SubCaps Viewer] Storage version ${storageVersion} is current`);
+        }
+    }
+    
+    // Migration logic for storage format changes
+    function migrateStorage(fromVersion, toVersion) {
+        try {
+            let cardDataStr = GM_getValue('cardData', '{}');
+            let cardData = JSON.parse(cardDataStr);
+            
+            // Version 1 to 2: Ensure card data structure is properly nested
+            if (fromVersion < 2) {
+                debugLog('[HeyMax SubCaps Viewer] Migrating from v1 to v2...');
+                
+                // V1 might have had flat structure or different organization
+                // V2 standardizes: cardData[cardId][dataType] = {data, timestamp, url, status, requestType}
+                
+                // Check if migration is needed
+                const needsMigration = Object.keys(cardData).some(key => {
+                    const value = cardData[key];
+                    // If any top-level key doesn't have the expected structure, migrate
+                    return value && typeof value === 'object' && 
+                           (value.data !== undefined && !value.transactions && !value.summary && !value.card_tracker);
+                });
+                
+                if (needsMigration) {
+                    // Preserve existing data but ensure proper structure
+                    const migratedData = {};
+                    Object.keys(cardData).forEach(key => {
+                        if (cardData[key] && typeof cardData[key] === 'object') {
+                            // If it looks like old format, wrap it properly
+                            if (cardData[key].data !== undefined && !cardData[key].transactions) {
+                                migratedData[key] = cardData[key];
+                            } else {
+                                // Already in correct format
+                                migratedData[key] = cardData[key];
+                            }
+                        }
+                    });
+                    cardData = migratedData;
+                }
+                
+                infoLog('Storage migrated from v1 to v2 successfully', '#4CAF50');
+            }
+            
+            // Save migrated data
+            GM_setValue('cardData', JSON.stringify(cardData));
+            GM_setValue('storageVersion', toVersion);
+            
+            debugLog('[HeyMax SubCaps Viewer] Migration complete. New storage version:', toVersion);
+        } catch (error) {
+            errorLog('Error during storage migration:', error);
+            errorLog('Storage migration failed. Using existing data as-is.');
+            // Don't update version if migration failed
+        }
+    }
+    
+    // Validate storage structure
+    function validateStorageStructure(cardData) {
+        if (!cardData || typeof cardData !== 'object') {
+            debugLog('[HeyMax SubCaps Viewer] Invalid cardData structure');
+            return false;
+        }
+        
+        // Check if structure matches expected format
+        for (const cardId in cardData) {
+            const cardInfo = cardData[cardId];
+            if (cardInfo && typeof cardInfo === 'object') {
+                // Valid if it has at least one of: transactions, summary, card_tracker
+                const hasValidStructure = cardInfo.transactions || cardInfo.summary || cardInfo.card_tracker;
+                if (!hasValidStructure) {
+                    debugLog(`[HeyMax SubCaps Viewer] Card ${cardId} has invalid structure`);
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
+    // ============================================================================
     // PART 1: API INTERCEPTION VIA DIRECT MONKEY PATCHING
     // ============================================================================
+    
+    // Initialize storage versioning system
+    initializeStorage();
     
     // Store original functions
     const targetWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
