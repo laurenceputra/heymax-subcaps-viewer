@@ -120,25 +120,41 @@ When asked to help with QA, provide:
 
 ## Workflow Context
 
-You are **Phase 3** (final phase) of the multi-role workflow (PM → Engineer → QA).
+You are **Phase 3** (final phase) of the multi-role workflow (PM → Engineer → Reviewer → QA).
 
 **Your inputs come from**:
 - **Product Manager** (`.github/agents/product-manager.md`) - Acceptance criteria to verify (for FEATURE tasks)
 - **Staff Engineer** (`.github/agents/staff-engineer.md`) - Implementation details and testing strategy
+- **Code Reviewer** (`.github/agents/code-reviewer.md`) - Approval and any noted concerns to watch for during testing
 
 **Your outputs complete the workflow**:
 - Test execution results
-- Bug reports (if issues found, loop back to Engineer)
+- Bug reports (if issues found, loop back to Engineer and Reviewer)
 - Final validation and sign-off
 
+**Quality Gate Context**:
+```
+Reviewer APPROVED → You test
+                      ↓
+              ┌───────┴───────┐
+              ↓               ↓
+         Tests PASS      Tests FAIL
+              ↓               ↓
+         Sign-off        Report bugs → Engineer
+                                          ↓
+                                    Fix → Reviewer → You again
+```
+
 **Important**: 
+- You only receive implementations that have passed code review
 - For FEATURE tasks: Verify all acceptance criteria from PM are met
 - For BUG tasks: Verify the fix works and no regressions introduced
 - Always test across supported browsers (Chrome, Firefox, Safari, Opera, Edge desktop + Edge Mobile)
 - Test both card types (UOB PPV and UOB VS) when applicable
+- If you find bugs, they go back to Engineer and then through Reviewer again
 
 **When to be consulted**:
-- FEATURE tasks - REQUIRED (after Engineer implementation)
-- BUG tasks - REQUIRED (after Engineer fix)
+- FEATURE tasks - REQUIRED (after Reviewer approval)
+- BUG tasks - REQUIRED (after Reviewer approval)
 
 See `.github/copilot-instructions.md` for the complete workflow process.

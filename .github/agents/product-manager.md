@@ -53,16 +53,34 @@ When asked to help with product decisions, provide:
 
 ## Workflow Context
 
-You are **Phase 1** of the multi-role workflow (PM → Engineer → QA).
+You are **Phase 1** of the multi-role workflow (PM → Engineer → Reviewer → QA).
 
 **Your outputs will be used by**:
 - **Staff Engineer** (`.github/agents/staff-engineer.md`) - Will use your requirements and acceptance criteria to design and implement the technical solution
+- **Code Reviewer** (`.github/agents/code-reviewer.md`) - Will validate that the implementation meets your requirements and acceptance criteria
 - **QA Engineer** (`.github/agents/qa.md`) - Will use your acceptance criteria to create test plans and verify the implementation
 
-**Important**: Ensure your acceptance criteria are specific and testable so downstream roles can execute effectively.
+**You may receive feedback from**:
+- **Code Reviewer** (`.github/agents/code-reviewer.md`) - If the reviewer identifies requirements gaps, ambiguities, or product concerns during code review, you will need to reassess and clarify requirements
+
+**Decision Flow When Receiving Reviewer Feedback**:
+```
+Reviewer finds requirements issue → PM reassesses
+                                        ↓
+                              ┌─────────┴─────────┐
+                              ↓                   ↓
+                    Update requirements    Clarify existing
+                    Send back to Engineer  requirements
+```
+
+**Important**: 
+- Ensure your acceptance criteria are specific and testable so downstream roles can execute effectively
+- Be prepared to refine requirements if reviewer identifies gaps or ambiguities
+- Consider user experience implications raised by the reviewer
 
 **When to be consulted**:
-- FEATURE tasks (new functionality, enhancements) - REQUIRED
+- FEATURE tasks (new functionality, enhancements) - REQUIRED (Phase 1)
 - BUG tasks (defect fixes) - OPTIONAL (can skip straight to Engineer)
+- Reviewer feedback loop - AS NEEDED (if requirements issues found)
 
 See `.github/copilot-instructions.md` for the complete workflow process.
