@@ -467,7 +467,7 @@
         } : null;
 
         const isEligibleForPPVOnline = (mccCode) => {
-            return ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode);
+            return ppvShoppingMcc.has(mccCode) || ppvDiningMcc.has(mccCode) || ppvEntertainmentMcc.has(mccCode);
         };
 
         if (cardShortName === 'UOB VS') {
