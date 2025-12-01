@@ -412,12 +412,6 @@
     // PART 5: UI COMPONENTS
     // ============================================================================
 
-    // Extract card ID from URL
-    function extractCardIdFromUrl() {
-        const match = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
-        return match ? match[1] : null;
-    }
-
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
         // Use Sets for O(1) lookup performance instead of arrays
@@ -843,7 +837,7 @@
         resultsDiv.innerHTML = '<p style="text-align: center; color: #666;">Loading data...</p>';
         overlay.style.display = 'flex';
 
-        const cardId = extractCardIdFromUrl();
+        const cardId = extractCardId(window.location.pathname);
         const cardDataStr = GM_getValue('cardData', '{}');
         const cardData = JSON.parse(cardDataStr);
 
@@ -1202,7 +1196,7 @@
         const button = document.getElementById('heymax-subcaps-button');
         if (!button) return;
 
-        const cardId = extractCardIdFromUrl();
+        const cardId = extractCardId(window.location.pathname);
         debugLog('[HeyMax SubCaps Viewer] Extracted card ID:', cardId);
 
         if (cardId) {
