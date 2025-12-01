@@ -365,11 +365,9 @@
                     return;
                 }
 
-                const paymentTag = transaction.payment_tag;
-
                 if (transaction.original_currency && transaction.original_currency !== 'SGD') {
                     foreignCurrencyBucket += transaction.base_currency_amount;
-                } else if (paymentTag === 'contactless') {
+                } else if (transaction.payment_tag === 'contactless') {
                     contactlessBucket += transaction.base_currency_amount;
                 }
             });
@@ -383,11 +381,9 @@
                     return;
                 }
 
-                const paymentTag = transaction.payment_tag;
-
-                if (paymentTag === 'contactless') {
+                if (transaction.payment_tag === 'contactless') {
                     contactlessBucket += roundDownToNearestFive(transaction.base_currency_amount);
-                } else if (paymentTag === 'online') {
+                } else if (transaction.payment_tag === 'online') {
                     const mccCode = parseInt(transaction.mcc_code, 10);
                     if (ppvShoppingMcc.includes(mccCode) || ppvDiningMcc.includes(mccCode) || ppvEntertainmentMcc.includes(mccCode)) {
                         onlineBucket += roundDownToNearestFive(transaction.base_currency_amount);
