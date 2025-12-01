@@ -408,12 +408,6 @@
     // PART 5: UI COMPONENTS
     // ============================================================================
 
-    // Extract card ID from URL
-    function extractCardIdFromUrl() {
-        const match = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
-        return match ? match[1] : null;
-    }
-
     // Calculate buckets from transaction data
     function calculateBuckets(apiResponse, cardShortName = 'UOB PPV', includeDetails = false) {
         // Use Sets for O(1) lookup performance instead of arrays
