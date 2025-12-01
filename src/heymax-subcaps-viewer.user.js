@@ -182,46 +182,33 @@
     // PART 3: FETCH INTERCEPTION
     // ============================================================================
 
-    targetWindow.fetch = async function(...args) {
-        const [resource, config] = args;
-        const url = typeof resource === 'string' ? resource : resource.url;
-        const method = config?.method || 'GET';
+    // Reusable fetch interceptor factory
+    function createFetchInterceptor() {
+        return async function(...args) {
+            const [resource, config] = args;
+            const url = typeof resource === 'string' ? resource : resource.url;
+            const method = config?.method || 'GET';
 
-        debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Intercepted: ${method} ${url}`, 'color: #2196F3; font-weight: bold;');
+            debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Intercepted: ${method} ${url}`, 'color: #2196F3; font-weight: bold;');
 
-        const response = await originalFetch.apply(this, args);
-        
-        const shouldLog = shouldLogUrl(url);
-        debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response: ${method} ${url} - Status: ${response.status} - Will Log: ${shouldLog}`, 
-            shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
-        
-        if (!shouldLog) {
-            return response;
-        }
-
-        const clonedResponse = response.clone();
-        
-        try {
-            const contentType = response.headers.get('content-type');
-            let responseData;
+            const response = await originalFetch.apply(this, args);
             
-            if (contentType && contentType.includes('application/json')) {
-                responseData = await clonedResponse.json();
-                const timestamp = new Date().toISOString();
+            const shouldLog = shouldLogUrl(url);
+            debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response: ${method} ${url} - Status: ${response.status} - Will Log: ${shouldLog}`, 
+                shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
+            
+            if (!shouldLog) {
+                return response;
+            }
+
+            const clonedResponse = response.clone();
+            
+            try {
+                const contentType = response.headers.get('content-type');
+                let responseData;
                 
-                if (DEBUG_MODE) {
-                    console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
-                    console.log('Method:', method);
-                    console.log('URL:', url);
-                    console.log('Status:', response.status);
-                    console.log('Response Data:', responseData);
-                    console.groupEnd();
-                }
-                
-                storeApiData('fetch', method, url, response.status, responseData, timestamp);
-            } else {
-                const text = await clonedResponse.text();
-                if (text.length < 1000) {
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await clonedResponse.json();
                     const timestamp = new Date().toISOString();
                     
                     if (DEBUG_MODE) {
@@ -229,79 +216,109 @@
                         console.log('Method:', method);
                         console.log('URL:', url);
                         console.log('Status:', response.status);
-                        console.log('Response Data:', text);
+                        console.log('Response Data:', responseData);
                         console.groupEnd();
                     }
                     
-                    storeApiData('fetch', method, url, response.status, text, timestamp);
+                    storeApiData('fetch', method, url, response.status, responseData, timestamp);
+                } else {
+                    const text = await clonedResponse.text();
+                    if (text.length < 1000) {
+                        const timestamp = new Date().toISOString();
+                        
+                        if (DEBUG_MODE) {
+                            console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
+                            console.log('Method:', method);
+                            console.log('URL:', url);
+                            console.log('Status:', response.status);
+                            console.log('Response Data:', text);
+                            console.groupEnd();
+                        }
+                        
+                        storeApiData('fetch', method, url, response.status, text, timestamp);
+                    }
                 }
+            } catch (error) {
+                errorLog('Error reading fetch response:', error);
             }
-        } catch (error) {
-            errorLog('Error reading fetch response:', error);
-        }
 
-        return response;
-    };
+            return response;
+        };
+    }
+
+    // Apply initial fetch interceptor
+    targetWindow.fetch = createFetchInterceptor();
+    targetWindow.fetch.patchedVersion = true;
 
     // ============================================================================
     // PART 4: XMLHttpRequest INTERCEPTION
     // ============================================================================
 
-    targetWindow.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-        this._method = method;
-        this._url = url;
-        debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Intercepted: ${method} ${url}`, 'color: #FF9800; font-weight: bold;');
-        return originalXHROpen.apply(this, [method, url, ...rest]);
-    };
+    // Reusable XHR interceptor factory - returns open and send methods
+    function createXHRInterceptors() {
+        const openInterceptor = function(method, url, ...rest) {
+            this._method = method;
+            this._url = url;
+            debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Intercepted: ${method} ${url}`, 'color: #FF9800; font-weight: bold;');
+            return originalXHROpen.apply(this, [method, url, ...rest]);
+        };
 
-    targetWindow.XMLHttpRequest.prototype.send = function(...args) {
-        const url = this._url;
-        const method = this._method;
-        
-        if (url && typeof url === 'string') {
-            this.addEventListener('load', function() {
-                if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
-                    const shouldLog = shouldLogUrl(url);
-                    debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Response: ${method} ${url} - Status: ${this.status} - Will Log: ${shouldLog}`, 
-                        shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
-                    
-                    if (!shouldLog) {
-                        return;
-                    }
-
-                    try {
-                        const contentType = this.getResponseHeader('content-type');
-                        let responseData;
-
-                        if (contentType && contentType.includes('application/json')) {
-                            responseData = JSON.parse(this.responseText);
-                        } else if (this.responseText && this.responseText.length < 1000) {
-                            responseData = this.responseText;
+        const sendInterceptor = function(...args) {
+            const url = this._url;
+            const method = this._method;
+            
+            if (url && typeof url === 'string') {
+                this.addEventListener('load', function() {
+                    if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
+                        const shouldLog = shouldLogUrl(url);
+                        debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Response: ${method} ${url} - Status: ${this.status} - Will Log: ${shouldLog}`, 
+                            shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
+                        
+                        if (!shouldLog) {
+                            return;
                         }
 
-                        if (responseData) {
-                            const timestamp = new Date().toISOString();
-                            
-                            if (DEBUG_MODE) {
-                                console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 📡 XHR Response Logged`, 'color: #FF9800; font-weight: bold;');
-                                console.log('Method:', method);
-                                console.log('URL:', url);
-                                console.log('Status:', this.status);
-                                console.log('Response Data:', responseData);
-                                console.groupEnd();
+                        try {
+                            const contentType = this.getResponseHeader('content-type');
+                            let responseData;
+
+                            if (contentType && contentType.includes('application/json')) {
+                                responseData = JSON.parse(this.responseText);
+                            } else if (this.responseText && this.responseText.length < 1000) {
+                                responseData = this.responseText;
                             }
-                            
-                            storeApiData('xhr', method, url, this.status, responseData, timestamp);
+
+                            if (responseData) {
+                                const timestamp = new Date().toISOString();
+                                
+                                if (DEBUG_MODE) {
+                                    console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 📡 XHR Response Logged`, 'color: #FF9800; font-weight: bold;');
+                                    console.log('Method:', method);
+                                    console.log('URL:', url);
+                                    console.log('Status:', this.status);
+                                    console.log('Response Data:', responseData);
+                                    console.groupEnd();
+                                }
+                                
+                                storeApiData('xhr', method, url, this.status, responseData, timestamp);
+                            }
+                        } catch (error) {
+                            errorLog('Error processing XHR response:', error);
                         }
-                    } catch (error) {
-                        errorLog('Error processing XHR response:', error);
                     }
-                }
-            });
-        }
-        
-        return originalXHRSend.apply(this, args);
-    };
+                });
+            }
+            
+            return originalXHRSend.apply(this, args);
+        };
+
+        return { openInterceptor, sendInterceptor };
+    }
+
+    // Apply initial XHR interceptors
+    const { openInterceptor: initialXHROpen, sendInterceptor: initialXHRSend } = createXHRInterceptors();
+    targetWindow.XMLHttpRequest.prototype.open = initialXHROpen;
+    targetWindow.XMLHttpRequest.prototype.send = initialXHRSend;
 
     console.log('[HeyMax SubCaps Viewer] API interception initialized');
 
@@ -316,137 +333,33 @@
     let consecutiveStableChecks = 0;
     const STABLE_CHECKS_THRESHOLD = 10; // If stable for 10 checks, increase interval
 
+    // Store references to the current XHR interceptors for comparison
+    let currentXHROpen = initialXHROpen;
+    let currentXHRSend = initialXHRSend;
+
     function checkAndReapplyPatches() {
         let patchesOverwritten = false;
 
-        // Check if fetch was overwritten
-        if (targetWindow.fetch !== targetWindow.fetch.patchedVersion) {
+        // Check if fetch was overwritten (marker property missing or false)
+        if (typeof targetWindow.fetch !== 'function' || !targetWindow.fetch.patchedVersion) {
             infoLog('⚠️ Fetch patch overwritten, re-applying...', '#FF9800');
-            const currentFetch = targetWindow.fetch;
-            targetWindow.fetch = async function(...args) {
-                const [resource, config] = args;
-                const url = typeof resource === 'string' ? resource : resource.url;
-                const method = config?.method || 'GET';
-
-                debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Intercepted: ${method} ${url}`, 'color: #2196F3; font-weight: bold;');
-
-                const response = await originalFetch.apply(this, args);
-                
-                const shouldLog = shouldLogUrl(url);
-                debugLog(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response: ${method} ${url} - Status: ${response.status} - Will Log: ${shouldLog}`, 
-                    shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
-                
-                if (!shouldLog) {
-                    return response;
-                }
-
-                const clonedResponse = response.clone();
-                
-                try {
-                    const contentType = response.headers.get('content-type');
-                    let responseData;
-                    
-                    if (contentType && contentType.includes('application/json')) {
-                        responseData = await clonedResponse.json();
-                        const timestamp = new Date().toISOString();
-                        
-                        if (DEBUG_MODE) {
-                            console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
-                            console.log('Method:', method);
-                            console.log('URL:', url);
-                            console.log('Status:', response.status);
-                            console.log('Response Data:', responseData);
-                            console.groupEnd();
-                        }
-                        
-                        storeApiData('fetch', method, url, response.status, responseData, timestamp);
-                    } else {
-                        const text = await clonedResponse.text();
-                        if (text.length < 1000) {
-                            const timestamp = new Date().toISOString();
-                            
-                            if (DEBUG_MODE) {
-                                console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 🌐 FETCH Response Logged`, 'color: #2196F3; font-weight: bold;');
-                                console.log('Method:', method);
-                                console.log('URL:', url);
-                                console.log('Status:', response.status);
-                                console.log('Response Data:', text);
-                                console.groupEnd();
-                            }
-                            
-                            storeApiData('fetch', method, url, response.status, text, timestamp);
-                        }
-                    }
-                } catch (error) {
-                    errorLog('Error reading fetch response:', error);
-                }
-
-                return response;
-            };
+            targetWindow.fetch = createFetchInterceptor();
             targetWindow.fetch.patchedVersion = true;
             patchesOverwritten = true;
         }
 
         // Check if XHR was overwritten
-        if (targetWindow.XMLHttpRequest.prototype.open !== originalXHROpen || 
-            targetWindow.XMLHttpRequest.prototype.send !== originalXHRSend) {
+        if (targetWindow.XMLHttpRequest.prototype.open !== currentXHROpen || 
+            targetWindow.XMLHttpRequest.prototype.send !== currentXHRSend) {
             infoLog('⚠️ XHR patch overwritten, re-applying...', '#FF9800');
             
-            targetWindow.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-                this._method = method;
-                this._url = url;
-                debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Intercepted: ${method} ${url}`, 'color: #FF9800; font-weight: bold;');
-                return originalXHROpen.apply(this, [method, url, ...rest]);
-            };
-
-            targetWindow.XMLHttpRequest.prototype.send = function(...args) {
-                const url = this._url;
-                const method = this._method;
-                
-                if (url && typeof url === 'string') {
-                    this.addEventListener('load', function() {
-                        if (this.readyState === 4 && this.status >= 200 && this.status < 300) {
-                            const shouldLog = shouldLogUrl(url);
-                            debugLog(`%c[HeyMax SubCaps Viewer] 📡 XHR Response: ${method} ${url} - Status: ${this.status} - Will Log: ${shouldLog}`, 
-                                shouldLog ? 'color: #4CAF50;' : 'color: #9E9E9E;');
-                            
-                            if (!shouldLog) {
-                                return;
-                            }
-
-                            try {
-                                const contentType = this.getResponseHeader('content-type');
-                                let responseData;
-
-                                if (contentType && contentType.includes('application/json')) {
-                                    responseData = JSON.parse(this.responseText);
-                                } else if (this.responseText && this.responseText.length < 1000) {
-                                    responseData = this.responseText;
-                                }
-
-                                if (responseData) {
-                                    const timestamp = new Date().toISOString();
-                                    
-                                    if (DEBUG_MODE) {
-                                        console.groupCollapsed(`%c[HeyMax SubCaps Viewer] 📡 XHR Response Logged`, 'color: #FF9800; font-weight: bold;');
-                                        console.log('Method:', method);
-                                        console.log('URL:', url);
-                                        console.log('Status:', this.status);
-                                        console.log('Response Data:', responseData);
-                                        console.groupEnd();
-                                    }
-                                    
-                                    storeApiData('xhr', method, url, this.status, responseData, timestamp);
-                                }
-                            } catch (error) {
-                                errorLog('Error processing XHR response:', error);
-                            }
-                        }
-                    });
-                }
-                
-                return originalXHRSend.apply(this, args);
-            };
+            const { openInterceptor, sendInterceptor } = createXHRInterceptors();
+            targetWindow.XMLHttpRequest.prototype.open = openInterceptor;
+            targetWindow.XMLHttpRequest.prototype.send = sendInterceptor;
+            
+            // Update stored references
+            currentXHROpen = openInterceptor;
+            currentXHRSend = sendInterceptor;
             
             patchesOverwritten = true;
         }
@@ -480,9 +393,6 @@
         // Schedule next check with current interval
         setTimeout(checkAndReapplyPatches, patchCheckInterval);
     }
-
-    // Mark initial patches
-    targetWindow.fetch.patchedVersion = true;
 
     // Start patch monitoring
     setTimeout(checkAndReapplyPatches, patchCheckInterval);
