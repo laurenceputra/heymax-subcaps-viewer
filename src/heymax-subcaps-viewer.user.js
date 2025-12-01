@@ -487,7 +487,23 @@
         let foreignCurrencyBucket = 0;
 
         apiResponse.forEach((transactionObj) => {
+            // Defensive input validation
+            if (!transactionObj || typeof transactionObj !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Invalid transaction object, skipping:', transactionObj);
+                return;
+            }
+            
             const transaction = transactionObj.transaction;
+            
+            if (!transaction || typeof transaction !== 'object') {
+                debugLog('[HeyMax SubCaps Viewer] Missing transaction property, skipping:', transactionObj);
+                return;
+            }
+            
+            if (typeof transaction.base_currency_amount !== 'number' || isNaN(transaction.base_currency_amount)) {
+                debugLog('[HeyMax SubCaps Viewer] Invalid base_currency_amount, skipping:', transaction);
+                return;
+            }
             
             const blacklistReason = getBlacklistReason(transaction);
             if (blacklistReason) {
