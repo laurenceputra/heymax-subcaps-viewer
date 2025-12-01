@@ -85,6 +85,27 @@
     // PART 2: DATA STORAGE FUNCTIONS
     // ============================================================================
 
+    // Storage cache to avoid repeated parsing
+    let cardDataCache = null;
+    let cacheInvalidated = false;
+
+    // Get card data with caching
+    function getCardData() {
+        if (cardDataCache === null || cacheInvalidated) {
+            const cardDataStr = GM_getValue('cardData', '{}');
+            cardDataCache = JSON.parse(cardDataStr);
+            cacheInvalidated = false;
+        }
+        return cardDataCache;
+    }
+
+    // Save card data and invalidate cache
+    function saveCardData(cardData) {
+        GM_setValue('cardData', JSON.stringify(cardData));
+        cardDataCache = cardData;
+        cacheInvalidated = false;
+    }
+
     // Extract card ID from URL
     function extractCardId(url) {
         const match = url.match(/\/api\/spend_tracking\/cards\/([a-f0-9]+)\//);
@@ -128,9 +149,8 @@
             }
         }
         
-        // Get existing card data
-        const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        // Get existing card data (cached)
+        const cardData = getCardData();
         
         debugLog('[HeyMax SubCaps Viewer] Current cardData before update:', cardData);
         
@@ -163,8 +183,8 @@
             infoLog(`${typeEmoji} Stored card_tracker (global) via ${typeLabel}`, requestType === 'fetch' ? '#2196F3' : '#FF9800');
         }
         
-        // Save the updated cardData structure
-        GM_setValue('cardData', JSON.stringify(cardData));
+        // Save the updated cardData structure (updates cache)
+        saveCardData(cardData);
         
         if (DEBUG_MODE) {
             console.groupCollapsed(`%c[HeyMax SubCaps Viewer] ${typeEmoji} Storage Details`, `color: ${requestType === 'fetch' ? '#2196F3' : '#FF9800'};`);
@@ -641,8 +661,7 @@
 
     // Check if button should be visible
     function shouldShowButton(cardId) {
-        const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        const cardData = getCardData();
 
         debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardData:', cardData);
         debugLog('[HeyMax SubCaps Viewer] Checking visibility - cardId:', cardId);
@@ -827,8 +846,7 @@
         overlay.style.display = 'flex';
 
         const cardId = extractCardIdFromUrl();
-        const cardDataStr = GM_getValue('cardData', '{}');
-        const cardData = JSON.parse(cardDataStr);
+        const cardData = getCardData();
 
         debugLog('[HeyMax SubCaps Viewer] showOverlay - cardData:', cardData);
         debugLog('[HeyMax SubCaps Viewer] showOverlay - cardId:', cardId);
