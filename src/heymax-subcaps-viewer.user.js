@@ -85,15 +85,19 @@
     // PART 2: DATA STORAGE FUNCTIONS
     // ============================================================================
 
+    // Compiled regex patterns (created once for reuse)
+    const REGEX_CARD_ID_API = /\/api\/spend_tracking\/cards\/([a-f0-9]+)\//;
+    const REGEX_CARD_ID_PAGE = /\/cards\/your-cards\/([a-f0-9]+)/;
+
     // Extract card ID from URL
     function extractCardId(url) {
-        const match = url.match(/\/api\/spend_tracking\/cards\/([a-f0-9]+)\//);
+        const match = url.match(REGEX_CARD_ID_API);
         if (match) {
             return match[1];
         }
         
         if (url.includes('/cards//')) {
-            const pageMatch = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+            const pageMatch = window.location.pathname.match(REGEX_CARD_ID_PAGE);
             return pageMatch ? pageMatch[1] : null;
         }
         
@@ -122,7 +126,7 @@
         
         // For card_tracker, try to get card ID from the current page URL
         if (dataType === 'card_tracker' && !cardId) {
-            const pageMatch = window.location.pathname.match(/\/cards\/your-cards\/([a-f0-9]+)/);
+            const pageMatch = window.location.pathname.match(REGEX_CARD_ID_PAGE);
             if (pageMatch) {
                 cardId = pageMatch[1];
             }
